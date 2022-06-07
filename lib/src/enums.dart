@@ -28,17 +28,18 @@ class PosTextSize {
   static const size7 = PosTextSize._internal(7);
   static const size8 = PosTextSize._internal(8);
 
-  static int decSize(PosTextSize height, PosTextSize width) =>
-      16 * (width.value - 1) + (height.value - 1);
+  static int decSize(PosTextSize height, PosTextSize width) => 16 * (width.value - 1) + (height.value - 1);
 }
 
 class PaperSize {
-  const PaperSize._internal(this.value);
+  PaperSize(this.value, {this.charWidth = 12, this.perLine = 48});
   final int value;
-  static const mm58 = PaperSize._internal(1);
-  static const mm80 = PaperSize._internal(2);
+  final int charWidth;
+  final int perLine;
+  static PaperSize mm58 = PaperSize(0);
+  static PaperSize mm80 = PaperSize(1);
 
-  int get width => value == PaperSize.mm58.value ? 372 : 558;
+  int get width => charWidth * perLine;
 }
 
 class PosBeepDuration {
