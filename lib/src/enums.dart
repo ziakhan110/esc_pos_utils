@@ -19,6 +19,7 @@ enum PosFontType { fontA, fontB }
 
 class PosTextSize {
   const PosTextSize._internal(this.value);
+  const PosTextSize(this.value);
   final int value;
   static const size1 = PosTextSize._internal(1);
   static const size2 = PosTextSize._internal(2);
