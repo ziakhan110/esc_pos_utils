@@ -68,6 +68,7 @@ class Generator {
     // replace some non-ascii characters
     text =
         text.replaceAll("’", "'").replaceAll("´", "'").replaceAll("»", '"').replaceAll(" ", ' ').replaceAll("•", '.');
+    text = text.replaceAll(RegExp('[^A-Za-z0-9!"#\$%&\'\n()*+,./:;<=>?@\^_`{|}~-]'), ' ');
     if (!isKanji) {
       return latin1.encode(text);
     } else {
@@ -333,6 +334,7 @@ class Generator {
     int? maxCharsPerLine,
   }) {
     List<int> bytes = [];
+    text = text.replaceAll(RegExp('[^A-Za-z0-9!"#\$%&\'\n()*+,./:;<=>?@\^_`{|}~-]'), ' ');
     if (!containsChinese) {
       bytes += _text(
         _encode(text, isKanji: containsChinese),
@@ -466,6 +468,13 @@ class Generator {
         // If the col's content is too long, split it to the next row
         int realCharactersNb = encodedToPrint.length;
         if (realCharactersNb > maxCharactersNb) {
+          try {
+            while (String.fromCharCodes(encodedToPrint.sublist(0, maxCharactersNb))[
+                    String.fromCharCodes(encodedToPrint.sublist(0, maxCharactersNb)).length - 1] !=
+                " ") {
+              maxCharactersNb--;
+            }
+          } catch (e) {}
           // Print max possible and split to the next row
           Uint8List encodedToPrintNextRow = encodedToPrint.sublist(maxCharactersNb);
           encodedToPrint = encodedToPrint.sublist(0, maxCharactersNb);
@@ -532,7 +541,7 @@ class Generator {
     bytes += emptyLines(1);
 
     if (isNextRow) {
-      row(nextRow);
+      bytes += row(nextRow);
     }
     return bytes;
   }
