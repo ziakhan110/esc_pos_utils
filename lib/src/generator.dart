@@ -32,9 +32,9 @@ class Generator {
   // ************************ Internal helpers ************************
   int _getMaxCharsPerLine(PosFontType? font) {
     if (_paperSize == PaperSize.mm58) {
-      return (font == null || font == PosFontType.fontA) ? 32 : 42;
+      return (font == null || font == PosFontType.fontA) ? this._paperSize.fontACharsPerLine : this._paperSize.fontBCharsPerLine;
     } else {
-      return (font == null || font == PosFontType.fontA) ? 48 : 64;
+      return (font == null || font == PosFontType.fontA) ? this._paperSize.fontACharsPerLine : this._paperSize.fontBCharsPerLine;
     }
   }
 
@@ -468,18 +468,11 @@ class Generator {
         // If the col's content is too long, split it to the next row
         int realCharactersNb = encodedToPrint.length;
         if (realCharactersNb > maxCharactersNb) {
-          try {
-            while (String.fromCharCodes(encodedToPrint.sublist(0, maxCharactersNb))[
-                    String.fromCharCodes(encodedToPrint.sublist(0, maxCharactersNb)).length - 1] !=
-                " ") {
-              maxCharactersNb--;
-            }
-          } catch (e) {}
           // Print max possible and split to the next row
           Uint8List encodedToPrintNextRow = encodedToPrint.sublist(maxCharactersNb);
           encodedToPrint = encodedToPrint.sublist(0, maxCharactersNb);
           isNextRow = true;
-          nextRow.add(PosColumn(textEncoded: encodedToPrintNextRow, width: cols[i].width, styles: cols[i].styles));
+          nextRow.add(PosColumn(text: String.fromCharCodes(encodedToPrintNextRow), width: cols[i].width, styles: cols[i].styles));
         } else {
           // Insert an empty col
           nextRow.add(PosColumn(text: '', width: cols[i].width, styles: cols[i].styles));
