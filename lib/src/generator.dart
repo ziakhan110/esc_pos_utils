@@ -510,7 +510,7 @@ class Generator {
         } else {
           // Insert an empty col
           nextRow.add(PosColumn(
-              text: '', width: cols[i].width, styles: cols[i].styles));
+              text: ' ', width: cols[i].width, styles: cols[i].styles));
         }
         // end rows splitting
         bytes += _text(
@@ -545,7 +545,7 @@ class Generator {
         } else {
           // Insert an empty col
           nextRow.add(PosColumn(
-              text: '', width: cols[i].width, styles: cols[i].styles));
+              text: ' ', width: cols[i].width, styles: cols[i].styles));
         }
 
         // Print current row
