@@ -7,7 +7,9 @@
  */
 
 enum PosAlign { left, center, right }
+
 enum PosCutMode { full, partial }
+
 enum PosDrawer { pin2, pin5 }
 
 /// Choose image printing function
@@ -19,7 +21,9 @@ enum PosFontType { fontA, fontB }
 
 class PosTextSize {
   const PosTextSize._internal(this.value);
+
   const PosTextSize(this.value);
+
   final int value;
   static const size1 = PosTextSize._internal(1);
   static const size2 = PosTextSize._internal(2);
@@ -30,22 +34,18 @@ class PosTextSize {
   static const size7 = PosTextSize._internal(7);
   static const size8 = PosTextSize._internal(8);
 
-  static int decSize(PosTextSize height, PosTextSize width) => 16 * (width.value - 1) + (height.value - 1);
+  static int decSize(PosTextSize height, PosTextSize width) =>
+      16 * (width.value - 1) + (height.value - 1);
 }
-
-enum PaperWidth { mm80, mm58 }
 
 class PaperSize {
   PosFontType fontType;
-  final PaperWidth value;
   final int fontACharWidth;
   final int fontBCharWidth;
   int fontACharsPerLine;
   int fontBCharsPerLine;
-  static PaperSize mm58 = PaperSize(PaperWidth.mm58);
-  static PaperSize mm80 = PaperSize(PaperWidth.mm58);
-  PaperSize(
-    this.value, {
+
+  PaperSize({
     this.fontType = PosFontType.fontA,
     this.fontACharWidth = 12,
     this.fontBCharWidth = 9,
@@ -64,6 +64,7 @@ class PaperSize {
 
 class PosBeepDuration {
   const PosBeepDuration._internal(this.value);
+
   final int value;
   static const beep50ms = PosBeepDuration._internal(1);
   static const beep100ms = PosBeepDuration._internal(2);
