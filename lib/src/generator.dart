@@ -87,6 +87,9 @@ class Generator {
   List _getLexemes(String text) {
     final List<String> lexemes = [];
     final List<bool> isLexemeChinese = [];
+
+    if (text.isEmpty) return <dynamic>[lexemes, isLexemeChinese];
+
     int start = 0;
     int end = 0;
     bool curLexemeChinese = _isChinese(text[0]);
