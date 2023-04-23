@@ -59,7 +59,7 @@ class Generator {
     return charsPerLine;
   }
 
-  Uint8List _encode(String text, {bool isKanji = false}) {
+  Uint8List _encode(String text) {
     // replace some non-ascii characters
     text = text
         .replaceAll("’", "'")
@@ -67,13 +67,21 @@ class Generator {
         .replaceAll("»", '"')
         .replaceAll(" ", ' ')
         .replaceAll("•", '.');
-    text = text.replaceAll(
-        RegExp('[^A-Za-z0-9!"#\$%&\'\n()*+,./:;<=>?@\^_`{|}~-]'), ' ');
-    if (!isKanji) {
-      return latin1.encode(text);
-    } else {
-      return Uint8List.fromList(gbk_bytes.encode(text));
+
+    final list = _getLexemes(text);
+    final List<String> lexemes = list[0];
+    final List<bool> isLexemeChinese = list[1];
+    List<int> textBytes = [];
+    for (int i = 0; i < lexemes.length; i++) {
+      if (isLexemeChinese[i]) {
+        textBytes.addAll(cKanjiOn.codeUnits);
+        textBytes.addAll(gbk_bytes.encode(lexemes[i]));
+      } else {
+        textBytes.addAll(cKanjiOff.codeUnits);
+        textBytes.addAll(latin1.encode(lexemes[i]));
+      }
     }
+    return Uint8List.fromList(textBytes);
   }
 
   List _getLexemes(String text) {
@@ -101,7 +109,21 @@ class Generator {
 
   /// Break text into chinese/non-chinese lexemes
   bool _isChinese(String ch) {
-    return ch.codeUnitAt(0) > 255;
+    int codePoint = ch.codeUnitAt(0);
+    return (codePoint >= 0x4E00 &&
+            codePoint <= 0x9FFF) || // CJK Unified Ideographs
+        (codePoint >= 0x3400 &&
+            codePoint <= 0x4DBF) || // CJK Unified Ideographs Extension A
+        (codePoint >= 0x20000 &&
+            codePoint <= 0x2A6DF) || // CJK Unified Ideographs Extension B
+        (codePoint >= 0x2A700 &&
+            codePoint <= 0x2B73F) || // CJK Unified Ideographs Extension C
+        (codePoint >= 0x2B740 &&
+            codePoint <= 0x2B81F) || // CJK Unified Ideographs Extension D
+        (codePoint >= 0x2B820 &&
+            codePoint <= 0x2CEAF) || // CJK Unified Ideographs Extension E
+        (codePoint >= 0x2CEB0 &&
+            codePoint <= 0x2EBEF); // CJK Unified Ideographs Extension F
   }
 
   /// Generate multiple bytes for a number: In lower and higher parts, or more parts as needed.
@@ -197,7 +219,7 @@ class Generator {
     for (int i = 0; i < bytes.length; i += pxPerLine) {
       int newVal = 0;
       for (int j = 0; j < pxPerLine; j++) {
-        newVal = _transformUint32Bool(
+        newVal = _transformUInt32Bool(
           newVal,
           pxPerLine - j,
           bytes[i + j] > threshold,
@@ -209,8 +231,8 @@ class Generator {
   }
 
   /// Replaces a single bit in a 32-bit unsigned integer.
-  int _transformUint32Bool(int uint32, int shift, bool newValue) {
-    return ((0xFFFFFFFF ^ (0x1 << shift)) & uint32) |
+  int _transformUInt32Bool(int uInt32, int shift, bool newValue) {
+    return ((0xFFFFFFFF ^ (0x1 << shift)) & uInt32) |
         ((newValue ? 1 : 0) << shift);
   }
 
@@ -254,7 +276,7 @@ class Generator {
     return bytes;
   }
 
-  List<int> setStyles(PosStyles styles, {bool isKanji = false}) {
+  List<int> setStyles(PosStyles styles) {
     List<int> bytes = [];
     if (styles.align != _styles.align) {
       bytes += latin1.encode(styles.align == PosAlign.left
@@ -302,13 +324,6 @@ class Generator {
       _styles = _styles.copyWith(height: styles.height, width: styles.width);
     }
 
-    // Set Kanji mode
-    if (isKanji) {
-      bytes += cKanjiOn.codeUnits;
-    } else {
-      bytes += cKanjiOff.codeUnits;
-    }
-
     // Set local code table
     if (styles.codeTable != null) {
       bytes += Uint8List.fromList(
@@ -342,24 +357,18 @@ class Generator {
     String text, {
     PosStyles styles = const PosStyles(),
     int linesAfter = 0,
-    bool containsChinese = false,
     int? maxCharsPerLine,
   }) {
     List<int> bytes = [];
     text = text.replaceAll(
         RegExp('[^A-Za-z0-9!"#\$%&\'\n()*+,./:;<=>?@\^_`{|}~-]'), ' ');
-    if (!containsChinese) {
-      bytes += _text(
-        _encode(text, isKanji: containsChinese),
-        styles: styles,
-        isKanji: containsChinese,
-        maxCharsPerLine: maxCharsPerLine,
-      );
-      // Ensure at least one line break after the text
-      bytes += emptyLines(linesAfter + 1);
-    } else {
-      bytes += _mixedKanji(text, styles: styles, linesAfter: linesAfter);
-    }
+    bytes += _text(
+      _encode(text),
+      styles: styles,
+      maxCharsPerLine: maxCharsPerLine,
+    );
+    // Ensure at least one line break after the text
+    bytes += emptyLines(linesAfter + 1);
     return bytes;
   }
 
@@ -492,7 +501,6 @@ class Generator {
           rows['next']!
               .add(PosColumn(text: '', width: col.width, styles: col.styles));
         }
-
         bytes += _text(
           _encode(col.text),
           styles: col.styles,
@@ -679,11 +687,17 @@ class Generator {
 
   /// Print horizontal full width separator
   /// If [len] is null, then it will be defined according to the paper width
-  List<int> hr({String ch = '-', int? len, int linesAfter = 0}) {
+  List<int> hr({
+    String ch = '-',
+    int? len,
+    int linesAfter = 0,
+    PosStyles styles = const PosStyles(),
+  }) {
     List<int> bytes = [];
     int n = len ?? _maxCharsPerLine ?? _getMaxCharsPerLine(_styles.fontType);
     String ch1 = ch.length == 1 ? ch : ch[0];
     bytes += text(List.filled(n, ch1).join(), linesAfter: linesAfter);
+    bytes += setStyles(styles);
     return bytes;
   }
 
@@ -710,7 +724,6 @@ class Generator {
     Uint8List textBytes, {
     PosStyles styles = const PosStyles(),
     int? colInd = 0,
-    bool isKanji = false,
     int colWidth = 12,
     int? maxCharsPerLine,
   }) {
@@ -746,40 +759,8 @@ class Generator {
       );
     }
 
-    bytes += setStyles(styles, isKanji: isKanji);
-
+    bytes += setStyles(styles);
     bytes += textBytes;
-    return bytes;
-  }
-
-  /// Prints one line of styled mixed (chinese and latin symbols) text
-  List<int> _mixedKanji(
-    String text, {
-    PosStyles styles = const PosStyles(),
-    int linesAfter = 0,
-    int? maxCharsPerLine,
-  }) {
-    if (text.isEmpty) return [];
-    List<int> bytes = [];
-    final list = _getLexemes(text);
-    final List<String> lexemes = list[0];
-    final List<bool> isLexemeChinese = list[1];
-
-    // Print each lexeme using codetable OR kanji
-    int? colInd = 0;
-    for (var i = 0; i < lexemes.length; ++i) {
-      bytes += _text(
-        _encode(lexemes[i], isKanji: isLexemeChinese[i]),
-        styles: styles,
-        colInd: colInd,
-        isKanji: isLexemeChinese[i],
-        maxCharsPerLine: maxCharsPerLine,
-      );
-      // Define the absolute position only once (we print one line only)
-      colInd = null;
-    }
-
-    bytes += emptyLines(linesAfter + 1);
     return bytes;
   }
 // ************************ (end) Internal command generators ************************
