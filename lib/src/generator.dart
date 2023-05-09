@@ -15,31 +15,47 @@ import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'commands.dart';
 
 class Generator {
-  Generator(this._paperSize, this._profile, {this.spaceBetweenRows = 5});
-
+  PosStyles globalStyles = PosStyles(
+    fontType: PosFontType.fontA,
+    align: PosAlign.center,
+  );
   // Ticket config
   final PaperSize _paperSize;
   CapabilityProfile _profile;
 
   // Global styles
   String? _codeTable;
-  PosFontType? _font;
 
   // Current styles
-  PosStyles _styles = PosStyles();
   int spaceBetweenRows;
+
+  Generator(
+    this._paperSize,
+    this._profile, {
+    this.spaceBetweenRows = 5,
+    this.globalStyles = const PosStyles(fontType: PosFontType.fontA),
+  });
 
   // ************************ Internal helpers ************************
   int _getMaxCharsPerLine([PosFontType? font]) {
-    return (font == null || font == PosFontType.fontA)
+    if (font != null)
+      return (font == PosFontType.fontA)
+          ? this._paperSize.fontACharsPerLine
+          : this._paperSize.fontBCharsPerLine;
+    return (globalStyles.fontType == PosFontType.fontA)
         ? this._paperSize.fontACharsPerLine
         : this._paperSize.fontBCharsPerLine;
   }
 
   double _getCharWidth([PosStyles? styles]) {
-    return (styles?.fontType == null || styles?.fontType == PosFontType.fontA)
-        ? this._paperSize.fontBCharWidth.toDouble()
-        : this._paperSize.fontACharWidth.toDouble();
+    if (styles?.fontType != null)
+      return (styles?.fontType == PosFontType.fontA)
+          ? this._paperSize.fontACharWidth.toDouble()
+          : this._paperSize.fontBCharWidth.toDouble();
+    else
+      return (globalStyles.fontType == PosFontType.fontA)
+          ? this._paperSize.fontACharWidth.toDouble()
+          : this._paperSize.fontBCharWidth.toDouble();
   }
 
   double _colIndToPosition(int colInd) {
@@ -221,9 +237,9 @@ class Generator {
   List<int> reset() {
     List<int> bytes = [];
     bytes += cInit.codeUnits;
-    _styles = PosStyles();
+    globalStyles = PosStyles();
     bytes += setGlobalCodeTable(_codeTable);
-    bytes += setGlobalFont(_font);
+    bytes += setGlobalFont(globalStyles.fontType);
     return bytes;
   }
 
@@ -236,7 +252,7 @@ class Generator {
       bytes += Uint8List.fromList(
         List.from(cCodeTable.codeUnits)..add(_profile.getCodePageId(codeTable)),
       );
-      _styles = _styles.copyWith(codeTable: codeTable);
+      globalStyles = globalStyles.copyWith(codeTable: codeTable);
     }
     return bytes;
   }
@@ -245,61 +261,63 @@ class Generator {
   /// (even after resetting)
   List<int> setGlobalFont(PosFontType? font) {
     List<int> bytes = [];
-    _font = font;
-    if (font != null) {
-      bytes += font == PosFontType.fontB ? cFontB.codeUnits : cFontA.codeUnits;
-      _styles = _styles.copyWith(fontType: font);
-    }
+    bytes += font == PosFontType.fontB ? cFontB.codeUnits : cFontA.codeUnits;
+    globalStyles = globalStyles.copyWith(fontType: font);
     return bytes;
   }
 
   List<int> setStyles(PosStyles styles) {
     List<int> bytes = [];
-    if (styles.align != _styles.align) {
+    if (styles.align != globalStyles.align) {
       bytes += latin1.encode(styles.align == PosAlign.left
           ? cAlignLeft
           : (styles.align == PosAlign.center ? cAlignCenter : cAlignRight));
-      _styles = _styles.copyWith(align: styles.align);
+    } else {
+      bytes += latin1.encode(globalStyles.align == PosAlign.left
+          ? cAlignLeft
+          : (globalStyles.align == PosAlign.center
+              ? cAlignCenter
+              : cAlignRight));
     }
 
-    if (styles.bold != _styles.bold) {
-      bytes += styles.bold ? cBoldOn.codeUnits : cBoldOff.codeUnits;
-      _styles = _styles.copyWith(bold: styles.bold);
+    if (styles.bold) {
+      bytes += cBoldOn.codeUnits;
+    } else {
+      bytes += cBoldOff.codeUnits;
     }
-    if (styles.turn90 != _styles.turn90) {
-      bytes += styles.turn90 ? cTurn90On.codeUnits : cTurn90Off.codeUnits;
-      _styles = _styles.copyWith(turn90: styles.turn90);
+    if (styles.turn90) {
+      bytes += cTurn90On.codeUnits;
+    } else {
+      bytes += cTurn90Off.codeUnits;
     }
-    if (styles.reverse != _styles.reverse) {
-      bytes += styles.reverse ? cReverseOn.codeUnits : cReverseOff.codeUnits;
-      _styles = _styles.copyWith(reverse: styles.reverse);
+    if (styles.reverse) {
+      bytes += cReverseOn.codeUnits;
+    } else {
+      bytes += cReverseOff.codeUnits;
     }
-    if (styles.underline != _styles.underline) {
-      bytes +=
-          styles.underline ? cUnderline1dot.codeUnits : cUnderlineOff.codeUnits;
-      _styles = _styles.copyWith(underline: styles.underline);
+    if (styles.underline) {
+      bytes += cUnderline1dot.codeUnits;
+    } else {
+      bytes += cUnderlineOff.codeUnits;
     }
 
     // Set font
-    if (styles.fontType != null && styles.fontType != _styles.fontType) {
+    if (globalStyles.fontType != null) {
+      bytes += globalStyles.fontType == PosFontType.fontB
+          ? cFontB.codeUnits
+          : cFontA.codeUnits;
+    }
+    if (styles.fontType != null) {
       bytes += styles.fontType == PosFontType.fontB
           ? cFontB.codeUnits
           : cFontA.codeUnits;
-      _styles = _styles.copyWith(fontType: styles.fontType);
-    } else if (_font != null && _font != _styles.fontType) {
-      bytes += _font == PosFontType.fontB ? cFontB.codeUnits : cFontA.codeUnits;
-      _styles = _styles.copyWith(fontType: _font);
     }
 
     // Characters size
-    if (styles.height.value != _styles.height.value ||
-        styles.width.value != _styles.width.value) {
-      bytes += Uint8List.fromList(
-        List.from(cSizeGSn.codeUnits)
-          ..add(PosTextSize.decSize(styles.height, styles.width)),
-      );
-      _styles = _styles.copyWith(height: styles.height, width: styles.width);
-    }
+    bytes += Uint8List.fromList(
+      List.from(cSizeGSn.codeUnits)
+        ..add(PosTextSize.decSize(styles.height, styles.width)),
+    );
 
     // Set local code table
     if (styles.codeTable != null) {
@@ -307,16 +325,12 @@ class Generator {
         List.from(cCodeTable.codeUnits)
           ..add(_profile.getCodePageId(styles.codeTable)),
       );
-      _styles =
-          _styles.copyWith(align: styles.align, codeTable: styles.codeTable);
-    } else if (_codeTable != null) {
+    } else {
       bytes += Uint8List.fromList(
         List.from(cCodeTable.codeUnits)
-          ..add(_profile.getCodePageId(_codeTable)),
+          ..add(_profile.getCodePageId(globalStyles.codeTable)),
       );
-      _styles = _styles.copyWith(align: styles.align, codeTable: _codeTable);
     }
-
     return bytes;
   }
 
@@ -332,12 +346,10 @@ class Generator {
 
   List<int> text(
     String text, {
-    PosStyles styles = const PosStyles(),
+    PosStyles? styles,
     int linesAfter = 0,
   }) {
     List<int> bytes = [];
-    text = text.replaceAll(
-        RegExp('[^A-Za-z0-9!"#\$%&\'\n()*+,./:;<=>?@\^_`{|}~-]'), ' ');
     bytes += _text(
       _encode(text),
       styles: styles,
@@ -451,47 +463,48 @@ class Generator {
       throw Exception('Total columns width must be equal to 12');
     }
 
-    void processRow() {
-      for (int i = 0; i < rows['current']!.length; ++i) {
-        PosColumn col = rows['current']![i];
-
-        int colInd = rows['current']!
-            .sublist(0, i)
-            .fold(0, (int sum, col) => sum + col.width);
-        double charWidth = _getCharWidth(col.styles);
-        double fromPos = _colIndToPosition(colInd);
-        final double toPos =
-            _colIndToPosition(colInd + col.width) - spaceBetweenRows;
-        int maxCharacters = ((toPos - fromPos) / charWidth).floor();
-
-        int realCharacters = col.text.length;
-        if (realCharacters > maxCharacters) {
-          rows['next']!.add(PosColumn(
-            text: col.text.substring(maxCharacters),
-            width: col.width,
-            styles: col.styles,
-          ));
-          col.text = col.text.substring(0, maxCharacters);
-        } else {
-          rows['next']!
-              .add(PosColumn(text: '', width: col.width, styles: col.styles));
-        }
-        bytes += _text(
-          _encode(col.text),
-          styles: col.styles,
-          colInd: colInd,
-          colWidth: col.width,
-        );
-      }
-    }
-
     while (rows['current']!.any((col) => col.text.isNotEmpty)) {
-      processRow();
+      bytes += _processRow(rows, bytes);
       bytes += emptyLines(1);
       rows['current'] = rows['next']!;
       rows['next'] = [];
     }
 
+    return bytes;
+  }
+
+  List<int> _processRow(Map<String, List<PosColumn>> rows, List<int> bytes) {
+    for (int i = 0; i < rows['current']!.length; ++i) {
+      PosColumn col = rows['current']![i];
+
+      int colInd = rows['current']!
+          .sublist(0, i)
+          .fold(0, (int sum, col) => sum + col.width);
+      double charWidth = _getCharWidth(col.styles);
+      double fromPos = _colIndToPosition(colInd);
+      final double toPos =
+          _colIndToPosition(colInd + col.width) - spaceBetweenRows;
+      int maxCharacters = ((toPos - fromPos) / charWidth).floor();
+
+      int realCharacters = col.text.length;
+      if (realCharacters > maxCharacters) {
+        rows['next']!.add(PosColumn(
+          text: col.text.substring(maxCharacters),
+          width: col.width,
+          styles: col.styles,
+        ));
+        col.text = col.text.substring(0, maxCharacters);
+      } else {
+        rows['next']!
+            .add(PosColumn(text: '', width: col.width, styles: col.styles));
+      }
+      bytes += _text(
+        _encode(col.text),
+        styles: col.styles,
+        colInd: colInd,
+        colWidth: col.width,
+      );
+    }
     return bytes;
   }
 
@@ -666,19 +679,19 @@ class Generator {
     String ch = '-',
     int? len,
     int linesAfter = 0,
-    PosStyles styles = const PosStyles(),
+    PosStyles? styles,
   }) {
     List<int> bytes = [];
-    int n = len ?? _getMaxCharsPerLine(_styles.fontType);
+    int n = len ?? _getMaxCharsPerLine(styles?.fontType);
     String ch1 = ch.length == 1 ? ch : ch[0];
     bytes += text(List.filled(n, ch1).join(), linesAfter: linesAfter);
-    bytes += setStyles(styles);
+    bytes += setStyles(styles ?? globalStyles);
     return bytes;
   }
 
   List<int> textEncoded(
     Uint8List textBytes, {
-    PosStyles styles = const PosStyles(),
+    PosStyles? styles,
     int linesAfter = 0,
     int? maxCharsPerLine,
   }) {
@@ -697,42 +710,40 @@ class Generator {
   /// [colInd] range: 0..11. If null: do not define the position
   List<int> _text(
     Uint8List textBytes, {
-    PosStyles styles = const PosStyles(),
-    int? colInd = 0,
+    PosStyles? styles,
+    int colInd = 0,
     int colWidth = 12,
   }) {
     List<int> bytes = [];
-    if (colInd != null) {
-      double charWidth = _getCharWidth(styles);
-      double fromPos = _colIndToPosition(colInd);
+    double charWidth = _getCharWidth(styles);
+    double fromPos = _colIndToPosition(colInd);
 
-      // Align
-      if (colWidth != 12) {
-        // Update fromPos
-        final double toPos =
-            _colIndToPosition(colInd + colWidth) - spaceBetweenRows;
-        final double textLen = textBytes.length * charWidth;
+    // Align
+    if (colWidth != 12) {
+      // Update fromPos
+      final double toPos =
+          _colIndToPosition(colInd + colWidth) - spaceBetweenRows;
+      final double textLen = textBytes.length * charWidth;
 
-        if (styles.align == PosAlign.right) {
-          fromPos = toPos - textLen;
-        } else if (styles.align == PosAlign.center) {
-          fromPos = fromPos + (toPos - fromPos) / 2 - textLen / 2;
-        }
-        if (fromPos < 0) {
-          fromPos = 0;
-        }
+      if (styles?.align == PosAlign.right) {
+        fromPos = toPos - textLen;
+      } else if (styles?.align == PosAlign.center) {
+        fromPos = fromPos + (toPos - fromPos) / 2 - textLen / 2;
       }
-
-      final hexStr = fromPos.round().toRadixString(16).padLeft(3, '0');
-      final hexPair = HEX.decode(hexStr);
-
-      // Position
-      bytes += Uint8List.fromList(
-        List.from(cPos.codeUnits)..addAll([hexPair[1], hexPair[0]]),
-      );
+      if (fromPos < 0) {
+        fromPos = 0;
+      }
     }
 
-    bytes += setStyles(styles);
+    final hexStr = fromPos.round().toRadixString(16).padLeft(3, '0');
+    final hexPair = HEX.decode(hexStr);
+
+    // Position
+    bytes += Uint8List.fromList(
+      List.from(cPos.codeUnits)..addAll([hexPair[1], hexPair[0]]),
+    );
+
+    bytes += setStyles(styles ?? globalStyles);
     bytes += textBytes;
     return bytes;
   }

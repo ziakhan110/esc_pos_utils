@@ -10,6 +10,16 @@ import 'enums.dart';
 
 /// Text styles
 class PosStyles {
+  final bool bold;
+  final bool reverse;
+  final bool underline;
+  final bool turn90;
+  final PosAlign align;
+  final PosTextSize height;
+  final PosTextSize width;
+  final PosFontType? fontType;
+  final String? codeTable;
+
   const PosStyles({
     this.bold = false,
     this.reverse = false,
@@ -34,16 +44,6 @@ class PosStyles {
     this.fontType: PosFontType.fontA,
     this.codeTable: "CP437",
   });
-
-  final bool bold;
-  final bool reverse;
-  final bool underline;
-  final bool turn90;
-  final PosAlign align;
-  final PosTextSize height;
-  final PosTextSize width;
-  final PosFontType? fontType;
-  final String? codeTable;
 
   PosStyles copyWith({
     bool? bold,

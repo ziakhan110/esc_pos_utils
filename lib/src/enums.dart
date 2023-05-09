@@ -39,18 +39,16 @@ class PosTextSize {
 }
 
 class PaperSize {
-  PosFontType fontType;
   final double fontACharWidth;
   final double fontBCharWidth;
   int fontACharsPerLine;
   int fontBCharsPerLine;
 
   PaperSize({
-    this.fontType = PosFontType.fontA,
-    this.fontACharWidth = 13.7,
-    this.fontBCharWidth = 12,
-    this.fontACharsPerLine = 42,
-    this.fontBCharsPerLine = 48,
+    this.fontACharWidth = 12,
+    this.fontBCharWidth = 9,
+    this.fontACharsPerLine = 48,
+    this.fontBCharsPerLine = 64,
   });
 }
 
