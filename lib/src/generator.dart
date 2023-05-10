@@ -266,7 +266,7 @@ class Generator {
     return bytes;
   }
 
-  List<int> setStyles(PosStyles styles) {
+  List<int> setStylesbk(PosStyles styles) {
     List<int> bytes = [];
     if (styles.align != globalStyles.align) {
       bytes += latin1.encode(styles.align == PosAlign.left
@@ -325,7 +325,12 @@ class Generator {
         List.from(cCodeTable.codeUnits)
           ..add(_profile.getCodePageId(styles.codeTable)),
       );
-    } else {
+    } else if(_codeTable!=null) {
+      bytes += Uint8List.fromList(
+        List.from(cCodeTable.codeUnits)
+          ..add(_profile.getCodePageId(_codeTable)),
+      );
+    }else{
       bytes += Uint8List.fromList(
         List.from(cCodeTable.codeUnits)
           ..add(_profile.getCodePageId(globalStyles.codeTable)),
@@ -333,7 +338,7 @@ class Generator {
     }
     return bytes;
   }
-
+ 
   /// Sens raw command(s)
   List<int> rawBytes(List<int> cmd, {bool isKanji = false}) {
     List<int> bytes = [];
