@@ -302,7 +302,7 @@ class Generator {
     }
 
     // Set font
-    if (globalStyles.fontType != null) {
+    if (globalStyles.fontType != null && styles.fontType == null) {
       bytes += globalStyles.fontType == PosFontType.fontB
           ? cFontB.codeUnits
           : cFontA.codeUnits;
