@@ -266,7 +266,7 @@ class Generator {
     return bytes;
   }
 
-  List<int> setStylesbk(PosStyles styles) {
+  List<int> setStyles(PosStyles styles) {
     List<int> bytes = [];
     if (styles.align != globalStyles.align) {
       bytes += latin1.encode(styles.align == PosAlign.left
