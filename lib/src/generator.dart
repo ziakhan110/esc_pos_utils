@@ -238,35 +238,22 @@ class Generator {
     List<int> bytes = [];
     bytes += cInit.codeUnits;
     globalStyles = PosStyles();
-    bytes += setGlobalCodeTable(_codeTable);
-    bytes += setGlobalFont(globalStyles.fontType);
     return bytes;
   }
 
   /// Set global code table which will be used instead of the default printer's code table
   /// (even after resetting)
-  List<int> setGlobalCodeTable(String? codeTable) {
-    List<int> bytes = [];
+  void setGlobalCodeTable(String? codeTable) {
     _codeTable = codeTable;
-    if (codeTable != null) {
-      bytes += Uint8List.fromList(
-        List.from(cCodeTable.codeUnits)..add(_profile.getCodePageId(codeTable)),
-      );
-      globalStyles = globalStyles.copyWith(codeTable: codeTable);
-    }
-    return bytes;
   }
 
   /// Set global font which will be used instead of the default printer's font
   /// (even after resetting)
-  List<int> setGlobalFont(PosFontType? font) {
-    List<int> bytes = [];
-    bytes += font == PosFontType.fontB ? cFontB.codeUnits : cFontA.codeUnits;
+  void setGlobalFont(PosFontType? font) {
     globalStyles = globalStyles.copyWith(fontType: font);
-    return bytes;
   }
 
-  List<int> setStyles(PosStyles styles) {
+  List<int> _setStyles(PosStyles styles) {
     List<int> bytes = [];
     if (styles.align != globalStyles.align) {
       bytes += latin1.encode(styles.align == PosAlign.left
@@ -504,7 +491,7 @@ class Generator {
   List<int> image(Image imgSrc, {PosAlign align = PosAlign.center}) {
     List<int> bytes = [];
     // Image alignment
-    bytes += setStyles(PosStyles().copyWith(align: align));
+    bytes += _setStyles(PosStyles().copyWith(align: align));
 
     final Image image = Image.from(imgSrc); // make a copy
 
@@ -554,7 +541,7 @@ class Generator {
   }) {
     List<int> bytes = [];
     // Image alignment
-    bytes += setStyles(PosStyles().copyWith(align: align));
+    bytes += _setStyles(PosStyles().copyWith(align: align));
 
     final int widthPx = image.width;
     final int heightPx = image.height;
@@ -606,7 +593,7 @@ class Generator {
   }) {
     List<int> bytes = [];
     // Set alignment
-    bytes += setStyles(PosStyles().copyWith(align: align));
+    bytes += _setStyles(PosStyles().copyWith(align: align));
 
     // Set text position
     bytes += cBarcodeSelectPos.codeUnits + [textPos.value];
@@ -646,7 +633,7 @@ class Generator {
   }) {
     List<int> bytes = [];
     // Set alignment
-    bytes += setStyles(PosStyles().copyWith(align: align));
+    bytes += _setStyles(PosStyles().copyWith(align: align));
     QRCode qr = QRCode(text, size, cor);
     bytes += qr.bytes;
     return bytes;
@@ -675,7 +662,7 @@ class Generator {
     int n = len ?? _getMaxCharsPerLine(styles?.fontType);
     String ch1 = ch.length == 1 ? ch : ch[0];
     bytes += text(List.filled(n, ch1).join(), linesAfter: linesAfter);
-    bytes += setStyles(styles ?? globalStyles);
+    bytes += _setStyles(styles ?? globalStyles);
     return bytes;
   }
 
@@ -733,7 +720,7 @@ class Generator {
       List.from(cPos.codeUnits)..addAll([hexPair[1], hexPair[0]]),
     );
 
-    bytes += setStyles(styles ?? globalStyles);
+    bytes += _setStyles(styles ?? globalStyles);
     bytes += textBytes;
     return bytes;
   }
