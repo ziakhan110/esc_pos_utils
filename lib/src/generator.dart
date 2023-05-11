@@ -280,38 +280,23 @@ class Generator {
               : cAlignRight));
     }
 
-    if (styles.bold) {
-      bytes += cBoldOn.codeUnits;
-    } else {
-      bytes += cBoldOff.codeUnits;
-    }
-    if (styles.turn90) {
-      bytes += cTurn90On.codeUnits;
-    } else {
-      bytes += cTurn90Off.codeUnits;
-    }
-    if (styles.reverse) {
-      bytes += cReverseOn.codeUnits;
-    } else {
-      bytes += cReverseOff.codeUnits;
-    }
-    if (styles.underline) {
-      bytes += cUnderline1dot.codeUnits;
-    } else {
-      bytes += cUnderlineOff.codeUnits;
-    }
+    bytes += styles.bold ? cBoldOn.codeUnits : cBoldOff.codeUnits;
+    bytes += styles.turn90 ? cTurn90On.codeUnits : cTurn90Off.codeUnits;
+    bytes += styles.reverse ? cReverseOn.codeUnits : cReverseOff.codeUnits;
+    bytes +=
+        styles.underline ? cUnderline1dot.codeUnits : cUnderlineOff.codeUnits;
 
     // Set font
+    PosFontType? fontType;
     if (globalStyles.fontType != null && styles.fontType == null) {
-      bytes += globalStyles.fontType == PosFontType.fontB
-          ? cFontB.codeUnits
-          : cFontA.codeUnits;
+      fontType = globalStyles.fontType;
     }
     if (styles.fontType != null) {
-      bytes += styles.fontType == PosFontType.fontB
-          ? cFontB.codeUnits
-          : cFontA.codeUnits;
+      fontType = styles.fontType;
     }
+
+    bytes +=
+        fontType == PosFontType.fontA ? cFontA.codeUnits : cFontB.codeUnits;
 
     // Characters size
     bytes += Uint8List.fromList(
@@ -330,7 +315,7 @@ class Generator {
         List.from(cCodeTable.codeUnits)
           ..add(_profile.getCodePageId(_codeTable)),
       );
-    } else {
+    } else if (globalStyles.codeTable != null) {
       bytes += Uint8List.fromList(
         List.from(cCodeTable.codeUnits)
           ..add(_profile.getCodePageId(globalStyles.codeTable)),
