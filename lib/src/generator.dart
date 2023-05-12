@@ -23,6 +23,7 @@ class Generator {
 
   // Global styles
   String? _codeTable;
+  bool chineseEnabled = false;
 
   // Current styles
   int spaceBetweenRows;
@@ -31,6 +32,7 @@ class Generator {
     this._paperSize,
     this._profile, {
     this.spaceBetweenRows = 5,
+    this.chineseEnabled = false,
     this.globalStyles = const PosStyles(fontType: PosFontType.fontA),
   });
 
@@ -80,21 +82,25 @@ class Generator {
     bool isChinese = false;
     bool prevIsChinese = false;
 
-    for (var i = 0; i < text.length; ++i) {
-      isChinese = _isChinese(text[i]);
-      if (isChinese) {
-        if (!prevIsChinese) {
-          prevIsChinese = true;
-          textBytes += cKanjiOn.codeUnits;
+    if (chineseEnabled) {
+      for (var i = 0; i < text.length; ++i) {
+        isChinese = _isChinese(text[i]);
+        if (isChinese) {
+          if (!prevIsChinese) {
+            prevIsChinese = true;
+            textBytes += cKanjiOn.codeUnits;
+          }
+          textBytes += gbk_bytes.encode(text[i]);
+        } else {
+          if (prevIsChinese) {
+            prevIsChinese = false;
+            textBytes += cKanjiOff.codeUnits;
+          }
+          textBytes += latin1.encode(text[i]);
         }
-        textBytes += gbk_bytes.encode(text[i]);
-      } else {
-        if (prevIsChinese) {
-          prevIsChinese = false;
-          textBytes += cKanjiOff.codeUnits;
-        }
-        textBytes += latin1.encode(text[i]);
       }
+    } else {
+      textBytes += latin1.encode(text);
     }
     return Uint8List.fromList(textBytes);
   }
@@ -102,6 +108,7 @@ class Generator {
   /// Break text into chinese/non-chinese lexemes
   bool _isChinese(String ch) {
     int codePoint = ch.codeUnitAt(0);
+    // 00A3
     return (codePoint >= 0x4E00 &&
             codePoint <= 0x9FFF) || // CJK Unified Ideographs
         (codePoint >= 0x3400 &&
@@ -390,7 +397,7 @@ class Generator {
     bytes += Uint8List.fromList(List<int>.generate(256, (i) => i));
 
     // Back to initial code table
-    setGlobalCodeTable(_codeTable);
+    if (_codeTable != null) bytes += setGlobalCodeTable(_codeTable!);
     return bytes;
   }
 
