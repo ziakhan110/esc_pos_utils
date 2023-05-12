@@ -82,25 +82,21 @@ class Generator {
     bool isChinese = false;
     bool prevIsChinese = false;
 
-    if (chineseEnabled) {
-      for (var i = 0; i < text.length; ++i) {
-        isChinese = _isChinese(text[i]);
-        if (isChinese) {
-          if (!prevIsChinese) {
-            prevIsChinese = true;
-            textBytes += cKanjiOn.codeUnits;
-          }
-          textBytes += gbk_bytes.encode(text[i]);
-        } else {
-          if (prevIsChinese) {
-            prevIsChinese = false;
-            textBytes += cKanjiOff.codeUnits;
-          }
-          textBytes += latin1.encode(text[i]);
+    for (var i = 0; i < text.length; ++i) {
+      isChinese = _isChinese(text[i]);
+      if (isChinese) {
+        if (!prevIsChinese) {
+          prevIsChinese = true;
+          textBytes += cKanjiOn.codeUnits;
         }
+        textBytes += gbk_bytes.encode(text[i]);
+      } else {
+        if (prevIsChinese) {
+          prevIsChinese = false;
+          textBytes += cKanjiOff.codeUnits;
+        }
+        textBytes += latin1.encode(text[i]);
       }
-    } else {
-      textBytes += latin1.encode(text);
     }
     return Uint8List.fromList(textBytes);
   }
