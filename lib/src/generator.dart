@@ -241,14 +241,12 @@ class Generator {
 
   /// Set global code table which will be used instead of the default printer's code table
   /// (even after resetting)
-  List<int> setGlobalCodeTable(String? codeTable) {
+  List<int> setGlobalCodeTable(String codeTable) {
     List<int> bytes = [];
     _codeTable = codeTable;
-    if (codeTable != null) {
-      bytes += Uint8List.fromList(
-        List.from(cCodeTable.codeUnits)..add(_profile.getCodePageId(codeTable)),
-      );
-    }
+    bytes += Uint8List.fromList(
+      List.from(cCodeTable.codeUnits)..add(_profile.getCodePageId(codeTable)),
+    );
     return bytes;
   }
 
