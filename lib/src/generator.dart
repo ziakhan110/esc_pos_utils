@@ -15,10 +15,8 @@ import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'commands.dart';
 
 class Generator {
-  PosStyles globalStyles = PosStyles(
-    fontType: PosFontType.fontA,
-    align: PosAlign.center,
-  );
+  PosStyles globalStyles =
+      PosStyles(fontType: PosFontType.fontA, align: PosAlign.center);
   // Ticket config
   final PaperSize _paperSize;
   CapabilityProfile _profile;
@@ -243,8 +241,15 @@ class Generator {
 
   /// Set global code table which will be used instead of the default printer's code table
   /// (even after resetting)
-  void setGlobalCodeTable(String? codeTable) {
+  List<int> setGlobalCodeTable(String? codeTable) {
+    List<int> bytes = [];
     _codeTable = codeTable;
+    if (codeTable != null) {
+      bytes += Uint8List.fromList(
+        List.from(cCodeTable.codeUnits)..add(_profile.getCodePageId(codeTable)),
+      );
+    }
+    return bytes;
   }
 
   /// Set global font which will be used instead of the default printer's font
@@ -255,24 +260,12 @@ class Generator {
 
   List<int> _setStyles(PosStyles styles) {
     List<int> bytes = [];
+    PosAlign? align;
     if (styles.align != globalStyles.align) {
-      bytes += latin1.encode(styles.align == PosAlign.left
-          ? cAlignLeft
-          : (styles.align == PosAlign.center ? cAlignCenter : cAlignRight));
+      align = styles.align;
     } else {
-      bytes += latin1.encode(globalStyles.align == PosAlign.left
-          ? cAlignLeft
-          : (globalStyles.align == PosAlign.center
-              ? cAlignCenter
-              : cAlignRight));
+      align = globalStyles.align;
     }
-
-    bytes += styles.bold ? cBoldOn.codeUnits : cBoldOff.codeUnits;
-    bytes += styles.turn90 ? cTurn90On.codeUnits : cTurn90Off.codeUnits;
-    bytes += styles.reverse ? cReverseOn.codeUnits : cReverseOff.codeUnits;
-    bytes +=
-        styles.underline ? cUnderline1dot.codeUnits : cUnderlineOff.codeUnits;
-
     // Set font
     PosFontType? fontType;
     if (globalStyles.fontType != null && styles.fontType == null) {
@@ -281,6 +274,14 @@ class Generator {
     if (styles.fontType != null) {
       fontType = styles.fontType;
     }
+    bytes += latin1.encode(align == PosAlign.left
+        ? cAlignLeft
+        : (align == PosAlign.center ? cAlignCenter : cAlignRight));
+    bytes += styles.bold ? cBoldOn.codeUnits : cBoldOff.codeUnits;
+    bytes += styles.turn90 ? cTurn90On.codeUnits : cTurn90Off.codeUnits;
+    bytes += styles.reverse ? cReverseOn.codeUnits : cReverseOff.codeUnits;
+    bytes +=
+        styles.underline ? cUnderline1dot.codeUnits : cUnderlineOff.codeUnits;
 
     bytes +=
         fontType == PosFontType.fontA ? cFontA.codeUnits : cFontB.codeUnits;
@@ -436,6 +437,7 @@ class Generator {
     Map<String, List<PosColumn>> rows = {'current': cols, 'next': []};
 
     final isSumValid = cols.fold(0, (int sum, col) => sum + col.width) == 12;
+
     if (!isSumValid) {
       throw Exception('Total columns width must be equal to 12');
     }
@@ -689,14 +691,14 @@ class Generator {
     Uint8List textBytes, {
     PosStyles? styles,
     int colInd = 0,
-    int colWidth = 12,
+    int? colWidth,
   }) {
     List<int> bytes = [];
     double charWidth = _getCharWidth(styles);
     double fromPos = _colIndToPosition(colInd);
 
     // Align
-    if (colWidth != 12) {
+    if (colWidth != null) {
       // Update fromPos
       final double toPos =
           _colIndToPosition(colInd + colWidth) - spaceBetweenRows;
