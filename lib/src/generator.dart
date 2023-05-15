@@ -67,49 +67,47 @@ class Generator {
     }
   }
 
-// Add the code page for Arabic (864)
-  final int arabicCodePage = 22;
-
   Uint8List _encode(String text) {
     // replace some non-ascii characters
     text = text
         .replaceAll("’", "'")
         .replaceAll("´", "'")
         .replaceAll("»", '"')
-        .replaceAll(" ", ' ')
         .replaceAll("•", '.');
     List<int> textBytes = [];
-    for (var i = 0; i < text.length; ++i) {
-      if (_isChinese(text[i])) {
-        textBytes += cKanjiOff.codeUnits;
-        textBytes += gbk_bytes.encode(text[i]);
-      } else {
-        textBytes += cKanjiOff.codeUnits;
-        textBytes += latin1.encode(text[i]);
-      }
-    }
+    // for (var i = 0; i < text.length; ++i) {
+    //   if (_isChinese(text[i])) {
+    //     textBytes += cKanjiOn.codeUnits;
+    //     textBytes += gbk_bytes.encode(text[i]);
+    //   } else {
+    //     textBytes += cKanjiOff.codeUnits;
+    //     textBytes += latin1.encode(text[i]);
+    //   }
+    // }
+    // textBytes += cKanjiOff.codeUnits;
+    textBytes += latin1.encode(text);
     return Uint8List.fromList(textBytes);
   }
 
   /// Break text into chinese/non-chinese lexemes
-  bool _isChinese(String ch) {
-    int codePoint = ch.codeUnitAt(0);
-    // 00A3
-    return (codePoint >= 0x4E00 &&
-            codePoint <= 0x9FFF) || // CJK Unified Ideographs
-        (codePoint >= 0x3400 &&
-            codePoint <= 0x4DBF) || // CJK Unified Ideographs Extension A
-        (codePoint >= 0x20000 &&
-            codePoint <= 0x2A6DF) || // CJK Unified Ideographs Extension B
-        (codePoint >= 0x2A700 &&
-            codePoint <= 0x2B73F) || // CJK Unified Ideographs Extension C
-        (codePoint >= 0x2B740 &&
-            codePoint <= 0x2B81F) || // CJK Unified Ideographs Extension D
-        (codePoint >= 0x2B820 &&
-            codePoint <= 0x2CEAF) || // CJK Unified Ideographs Extension E
-        (codePoint >= 0x2CEB0 &&
-            codePoint <= 0x2EBEF); // CJK Unified Ideographs Extension F
-  }
+  // bool _isChinese(String ch) {
+  //   int codePoint = ch.codeUnitAt(0);
+  //   // 00A3
+  //   return (codePoint >= 0x4E00 &&
+  //           codePoint <= 0x9FFF) || // CJK Unified Ideographs
+  //       (codePoint >= 0x3400 &&
+  //           codePoint <= 0x4DBF) || // CJK Unified Ideographs Extension A
+  //       (codePoint >= 0x20000 &&
+  //           codePoint <= 0x2A6DF) || // CJK Unified Ideographs Extension B
+  //       (codePoint >= 0x2A700 &&
+  //           codePoint <= 0x2B73F) || // CJK Unified Ideographs Extension C
+  //       (codePoint >= 0x2B740 &&
+  //           codePoint <= 0x2B81F) || // CJK Unified Ideographs Extension D
+  //       (codePoint >= 0x2B820 &&
+  //           codePoint <= 0x2CEAF) || // CJK Unified Ideographs Extension E
+  //       (codePoint >= 0x2CEB0 &&
+  //           codePoint <= 0x2EBEF); // CJK Unified Ideographs Extension F
+  // }
 
   /// Generate multiple bytes for a number: In lower and higher parts, or more parts as needed.
   ///
