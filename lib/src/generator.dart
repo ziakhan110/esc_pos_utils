@@ -79,22 +79,12 @@ class Generator {
         .replaceAll(" ", ' ')
         .replaceAll("•", '.');
     List<int> textBytes = [];
-    bool isChinese = false;
-    bool prevIsChinese = false;
-
     for (var i = 0; i < text.length; ++i) {
-      isChinese = _isChinese(text[i]);
-      if (isChinese) {
-        if (!prevIsChinese) {
-          prevIsChinese = true;
-          textBytes += cKanjiOn.codeUnits;
-        }
+      if (_isChinese(text[i])) {
+        textBytes += cKanjiOff.codeUnits;
         textBytes += gbk_bytes.encode(text[i]);
       } else {
-        if (prevIsChinese) {
-          prevIsChinese = false;
-          textBytes += cKanjiOff.codeUnits;
-        }
+        textBytes += cKanjiOff.codeUnits;
         textBytes += latin1.encode(text[i]);
       }
     }
