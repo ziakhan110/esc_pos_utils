@@ -10,7 +10,6 @@ import 'dart:convert';
 import 'dart:typed_data' show Uint8List;
 import 'package:hex/hex.dart';
 import 'package:image/image.dart';
-import 'package:gbk_codec/gbk_codec.dart';
 import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'commands.dart';
 
@@ -431,48 +430,47 @@ class Generator {
       throw Exception('Total columns width must be equal to 12');
     }
 
+    void _processRow() {
+      for (int i = 0; i < rows['current']!.length; ++i) {
+        PosColumn col = rows['current']![i];
+
+        int colInd = rows['current']!
+            .sublist(0, i)
+            .fold(0, (int sum, col) => sum + col.width);
+        double charWidth = _getCharWidth(col.styles);
+        double fromPos = _colIndToPosition(colInd);
+        final double toPos =
+            _colIndToPosition(colInd + col.width) - spaceBetweenRows;
+        int maxCharacters = ((toPos - fromPos) / charWidth).floor();
+
+        int realCharacters = col.text.length;
+        if (realCharacters > maxCharacters) {
+          rows['next']!.add(PosColumn(
+            text: col.text.substring(maxCharacters),
+            width: col.width,
+            styles: col.styles,
+          ));
+          col.text = col.text.substring(0, maxCharacters);
+        } else {
+          rows['next']!
+              .add(PosColumn(text: '', width: col.width, styles: col.styles));
+        }
+        bytes += _text(
+          _encode(col.text),
+          styles: col.styles,
+          colInd: colInd,
+          colWidth: col.width,
+        );
+      }
+    }
+
     while (rows['current']!.any((col) => col.text.isNotEmpty)) {
-      bytes += _processRow(rows, bytes);
+      _processRow();
       bytes += emptyLines(1);
       rows['current'] = rows['next']!;
       rows['next'] = [];
     }
 
-    return bytes;
-  }
-
-  List<int> _processRow(Map<String, List<PosColumn>> rows, List<int> bytes) {
-    for (int i = 0; i < rows['current']!.length; ++i) {
-      PosColumn col = rows['current']![i];
-
-      int colInd = rows['current']!
-          .sublist(0, i)
-          .fold(0, (int sum, col) => sum + col.width);
-      double charWidth = _getCharWidth(col.styles);
-      double fromPos = _colIndToPosition(colInd);
-      final double toPos =
-          _colIndToPosition(colInd + col.width) - spaceBetweenRows;
-      int maxCharacters = ((toPos - fromPos) / charWidth).floor();
-
-      int realCharacters = col.text.length;
-      if (realCharacters > maxCharacters) {
-        rows['next']!.add(PosColumn(
-          text: col.text.substring(maxCharacters),
-          width: col.width,
-          styles: col.styles,
-        ));
-        col.text = col.text.substring(0, maxCharacters);
-      } else {
-        rows['next']!
-            .add(PosColumn(text: '', width: col.width, styles: col.styles));
-      }
-      bytes += _text(
-        _encode(col.text),
-        styles: col.styles,
-        colInd: colInd,
-        colWidth: col.width,
-      );
-    }
     return bytes;
   }
 
