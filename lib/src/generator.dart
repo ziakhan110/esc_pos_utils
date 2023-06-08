@@ -83,7 +83,7 @@ class Generator {
     //     textBytes += latin1.encode(text[i]);
     //   }
     // }
-    // textBytes += cKanjiOff.codeUnits;
+    textBytes += cKanjiOff.codeUnits;
     textBytes += latin1.encode(text);
     return Uint8List.fromList(textBytes);
   }
