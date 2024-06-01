@@ -144,7 +144,6 @@
       "model": "XP-N160I",
       "description": ""
     },
-
     "RP80USE": {
       "codePages": {
         "0": "CP437",
@@ -195,7 +194,6 @@
       "model": "RP80USE",
       "description": ""
     },
-
     "TP806L": {
       "codePages": {
         "0": "PC437",
@@ -218,6 +216,31 @@
         "63": "ISO-8859-6"
       },
       "vendor": "HPRT",
+      "model": "TP806L",
+      "description": ""
+    },
+    "SUNMI": {
+      "codePages": {
+        "0 ": "CP437",
+        "2 ": "CP850",
+        "3 ": "CP860",
+        "4 ": "CP863",
+        "5 ": "CP865",
+        "13": "CP857",
+        "14": "CP737",
+        "15": "CP928",
+        "16": "Windows-1252",
+        "17": "CP866",
+        "18": "CP852",
+        "19": "CP858",
+        "21": "CP874",
+        "33": "Windows-775",
+        "34": "CP855",
+        "36": "CP862",
+        "37": "CP864",
+        "254": "CP855"
+      },
+      "vendor": "SUNMI",
       "model": "TP806L",
       "description": ""
     }
