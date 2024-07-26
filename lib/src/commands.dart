@@ -35,6 +35,8 @@ const cTurn90Off = '${esc}V\x00'; // Turn 90° clockwise rotation mode off
 const cCodeTable = '${esc}t'; // Select character code table [N]
 const cKanjiOn = '$fs&'; // Select Kanji character mode
 const cKanjiOff = '$fs.'; // Cancel Kanji character mode
+const cAltColorOn = '${esc}r\x01'; // Use alternative color (e.g., red)
+const cAltColorOff = '${esc}r\x00'; // Use default color (e.g., black)
 
 // Print Position
 const cAlignLeft = '${esc}a0'; // Left justification

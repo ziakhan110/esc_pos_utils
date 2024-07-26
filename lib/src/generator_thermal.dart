@@ -13,25 +13,12 @@ import 'package:image/image.dart';
 import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'commands.dart';
 
-abstract class PrintingGenerator {
-  void generate();
-
-  List<int> setGlobalCodeTable(String codeTable);
-  void setGlobalFont(PosFontType? font);
-  List<int> image(Image imgSrc, {PosAlign align = PosAlign.center});
-  List<int> text(String text, {PosStyles? styles, int linesAfter = 0});
-  List<int> row(List<PosColumn> cols);
-  List<int> hr(
-      {String ch = '-', int? len, int linesAfter = 0, PosStyles? styles});
-  List<int> cut({PosCutMode mode = PosCutMode.full});
-  List<int> feed(int n);
-}
-
-class Generator extends PrintingGenerator {
+class GeneratorImpact extends PrintingGenerator {
   PosStyles globalStyles =
       PosStyles(fontType: PosFontType.fontA, align: PosAlign.center);
   // Ticket config
   final PaperSize _paperSize;
+  final String gSorESC;
   CapabilityProfile _profile;
 
   // Global styles
@@ -41,9 +28,10 @@ class Generator extends PrintingGenerator {
   // Current styles
   int spaceBetweenRows;
 
-  Generator(
+  GeneratorImpact(
     this._paperSize,
-    this._profile, {
+    this._profile,
+    this.gSorESC, {
     this.spaceBetweenRows = 5,
     this.chineseEnabled = false,
     this.globalStyles = const PosStyles(fontType: PosFontType.fontA),
@@ -80,26 +68,58 @@ class Generator extends PrintingGenerator {
     }
   }
 
-  Uint8List _encode(String text) {
-    // replace some non-ascii characters
-    text = text
-        .replaceAll("’", "'")
-        .replaceAll("´", "'")
-        .replaceAll("»", '"')
-        .replaceAll("•", '.');
+  Uint8List _encode(String text,
+      {PosStyles? styles, bool alternativeColor = false}) {
     List<int> textBytes = [];
-    // for (var i = 0; i < text.length; ++i) {
-    //   if (_isChinese(text[i])) {
-    //     textBytes += cKanjiOn.codeUnits;
-    //     textBytes += gbk_bytes.encode(text[i]);
-    //   } else {
-    //     textBytes += cKanjiOff.codeUnits;
-    //     textBytes += latin1.encode(text[i]);
-    //   }
+
+    // Initialize the printer (ESC @)
+    // textBytes.addAll([0x1B, 0x40]);
+
+    // // Set alternative color (ESC r 1 for red, ESC r 0 for black)
+    // if (alternativeColor) {
+    //   textBytes.addAll([0x1B, 0x72, 0x01]);
+    // } else {
+    //   textBytes.addAll([0x1B, 0x72, 0x00]);
     // }
-    textBytes += cKanjiOff.codeUnits;
+
+    // // Apply styles if provided
+    // if (styles != null) {
+    //   int fontSize = 0;
+    //   fontSize |= 0x12;
+    //   textBytes
+    //       .addAll([0x1B, 0x21, fontSize]); // GS ! n command to set text size
+    // }
+
+    // Convert text to bytes using Latin-1 encoding
     textBytes += latin1.encode(text);
+
+    // // Reset styles if they were set
+    // if (styles != null) {
+    //   textBytes.addAll([0x1D, 0x21, 0x00]); // Reset to normal size
+    // }
+
+    // Ensure color is reset to black after printing
+    // textBytes.addAll([0x1B, 0x72, 0x00]);
+
     return Uint8List.fromList(textBytes);
+    // text = text
+    //     .replaceAll("’", "'")
+    //     .replaceAll("´", "'")
+    //     .replaceAll("»", '"')
+    //     .replaceAll("•", '.');
+    // List<int> textBytes = [];
+    // // for (var i = 0; i < text.length; ++i) {
+    // //   if (_isChinese(text[i])) {
+    // //     textBytes += cKanjiOn.codeUnits;
+    // //     textBytes += gbk_bytes.encode(text[i]);
+    // //   } else {
+    // //     textBytes += cKanjiOff.codeUnits;
+    // //     textBytes += latin1.encode(text[i]);
+    // //   }
+    // // }
+    // textBytes += cKanjiOff.codeUnits;
+    // textBytes += latin1.encode(text);
+    // return Uint8List.fromList(textBytes);
   }
 
   /// Break text into chinese/non-chinese lexemes
@@ -245,6 +265,7 @@ class Generator extends PrintingGenerator {
 
   /// Set global code table which will be used instead of the default printer's code table
   /// (even after resetting)
+  ///
   @override
   List<int> setGlobalCodeTable(String codeTable) {
     List<int> bytes = [];
@@ -264,6 +285,15 @@ class Generator extends PrintingGenerator {
 
   List<int> _setStyles(PosStyles styles) {
     List<int> bytes = [];
+
+    // Disable color
+    bytes += cAltColorOff.codeUnits;
+
+    // Characters color
+    if (styles.alternativeColor) {
+      bytes += cAltColorOn.codeUnits;
+    }
+
     PosAlign? align;
     if (styles.align != globalStyles.align) {
       align = styles.align;
@@ -291,10 +321,17 @@ class Generator extends PrintingGenerator {
         fontType == PosFontType.fontA ? cFontA.codeUnits : cFontB.codeUnits;
 
     // Characters size
-    bytes += Uint8List.fromList(
-      List.from(cSizeGSn.codeUnits)
-        ..add(PosTextSize.decSize(styles.height, styles.width)),
-    );
+    if (gSorESC == 'gs') {
+      bytes += Uint8List.fromList(
+        List.from(cSizeGSn.codeUnits)
+          ..add(PosTextSize.decSize(styles.height, styles.width)),
+      );
+    } else {
+      bytes += Uint8List.fromList(
+        List.from(cSizeESCn.codeUnits)
+          ..add(PosTextSize.decSize(styles.height, styles.width)),
+      );
+    }
 
     // Set local code table
     if (styles.codeTable != null) {
@@ -313,6 +350,7 @@ class Generator extends PrintingGenerator {
           ..add(_profile.getCodePageId(globalStyles.codeTable)),
       );
     }
+
     return bytes;
   }
 
@@ -327,14 +365,11 @@ class Generator extends PrintingGenerator {
   }
 
   @override
-  List<int> text(
-    String text, {
-    PosStyles? styles,
-    int linesAfter = 0,
-  }) {
+  List<int> text(String text,
+      {PosStyles? styles, int linesAfter = 0, bool alternativeColor = false}) {
     List<int> bytes = [];
     bytes += _text(
-      _encode(text),
+      _encode(text, styles: styles, alternativeColor: alternativeColor),
       styles: styles,
     );
     // Ensure at least one line break after the text
@@ -439,60 +474,106 @@ class Generator extends PrintingGenerator {
   ///
   /// A row contains up to 12 columns. A column has a width between 1 and 12.
   /// Total width of columns in one row must be equal 12.
+  ///
   @override
-  List<int> row(List<PosColumn> cols) {
-    List<int> bytes = [];
-    Map<String, List<PosColumn>> rows = {'current': cols, 'next': []};
+  List<int> row(
+    List<PosColumn> cols, {
+    PosStyles? styles,
+    bool alternativeColor = false,
+    bool isProduct = false,
+  }) {
+    List<String> strings = cols.map((c) => c.text).toList();
 
-    final isSumValid = cols.fold(0, (int sum, col) => sum + col.width) == 12;
+    int maxStringLenght = isProduct ? 40 : _paperSize.fontACharsPerLine;
 
-    if (!isSumValid) {
-      throw Exception('Total columns width must be equal to 12');
+    int totalStringLength =
+        strings.fold(0, (length, string) => length + string.length);
+
+    int totalSpaces = maxStringLenght - totalStringLength;
+
+    int gaps = strings.length - 1;
+
+    if (gaps == 0) {
+      // If there are no gaps, just fill the remaining spaces after the single string
+
+      if (gaps == 0) return text(strings.join());
     }
 
-    void _processRow() {
-      for (int i = 0; i < rows['current']!.length; ++i) {
-        PosColumn col = rows['current']![i];
+    if (strings.length != 3) {
+      int spacesBetween = totalSpaces ~/ gaps;
+      int extraSpaces = totalSpaces % gaps;
 
-        int colInd = rows['current']!
-            .sublist(0, i)
-            .fold(0, (int sum, col) => sum + col.width);
-        double charWidth = _getCharWidth(col.styles);
-        double fromPos = _colIndToPosition(colInd);
-        final double toPos =
-            _colIndToPosition(colInd + col.width) - spaceBetweenRows;
-        int maxCharacters = ((toPos - fromPos) / charWidth).floor();
-
-        int realCharacters = col.text.length;
-        if (realCharacters > maxCharacters) {
-          rows['next']!.add(PosColumn(
-            text: col.text.substring(maxCharacters),
-            width: col.width,
-            styles: col.styles,
-          ));
-          col.text = col.text.substring(0, maxCharacters);
-        } else {
-          rows['next']!
-              .add(PosColumn(text: '', width: col.width, styles: col.styles));
+      String result = '';
+      for (int i = 0; i < strings.length; i++) {
+        result += strings[i];
+        if (i < gaps) {
+          // Add spaces between the words
+          result += ' ' * (spacesBetween + (i < extraSpaces ? 1 : 0));
         }
-        bytes += _text(
-          _encode(col.text),
-          styles: col.styles,
-          colInd: colInd,
-          colWidth: col.width,
-        );
+      }
+
+      return text(result, styles: styles, alternativeColor: alternativeColor);
+    }
+
+    // Define the number of spaces you want between the first and second string
+    int spacesBetweenFirstAndSecond = isProduct ? 4 : 2;
+    int spacesBetweenOthers = totalSpaces - spacesBetweenFirstAndSecond;
+
+    String result = '';
+
+    for (int i = 0; i < strings.length; i++) {
+      result += strings[i];
+      if (i == 0 && strings.length == 3) {
+        // Add specific number of spaces after the first string
+        result += ' ' * spacesBetweenFirstAndSecond;
+      } else if (i < gaps) {
+        // Add remaining spaces between the second and third string
+
+        result += ' ' * spacesBetweenOthers;
       }
     }
 
-    while (rows['current']!.any((col) => col.text.isNotEmpty)) {
-      _processRow();
-      bytes += emptyLines(1);
-      rows['current'] = rows['next']!;
-      rows['next'] = [];
-    }
-
-    return bytes;
+    return text(result, styles: styles, alternativeColor: alternativeColor);
   }
+
+  // List<int> row(List<PosColumn> cols,
+  //     {PosStyles? styles, bool alternativeColor = false}) {
+  //   List<String> strings = cols.map((c) => c.text).toList();
+
+  //   int maxStringLenght = _paperSize.fontACharsPerLine;
+
+  //   // if (styles != null) {
+  //   //   maxStringLenght = (_paperSize.fontACharsPerLine ~/ 1.2);
+  //   // }
+
+  //   // Calculate the total length of all strings combined
+  //   int totalStringLength =
+  //       strings.fold(0, (length, string) => length + string.length);
+
+  //   // Calculate the number of spaces needed
+  //   int totalSpaces = maxStringLenght - totalStringLength;
+
+  //   // Calculate the number of gaps between the strings
+  //   int gaps = strings.length - 1;
+
+  //   // If there are no gaps, return the joined string as is
+  //   if (gaps == 0) return text(strings.join());
+
+  //   // Calculate spaces to distribute between each gap
+  //   int spacesBetween = totalSpaces ~/ gaps;
+  //   int extraSpaces = totalSpaces % gaps;
+
+  //   // Build the resulting string
+  //   String result = '';
+  //   for (int i = 0; i < strings.length; i++) {
+  //     result += strings[i];
+  //     if (i < gaps) {
+  //       // Add spaces between the words
+  //       result += ' ' * (spacesBetween + (i < extraSpaces ? 1 : 0));
+  //     }
+  //   }
+  //   return text(result, styles: styles, alternativeColor: alternativeColor);
+  // }
 
   /// Print an image using (ESC *) command
   ///

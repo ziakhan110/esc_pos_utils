@@ -19,6 +19,7 @@ class PosStyles {
   final PosTextSize width;
   final PosFontType? fontType;
   final String? codeTable;
+  final bool alternativeColor;
 
   const PosStyles({
     this.bold = false,
@@ -28,6 +29,7 @@ class PosStyles {
     this.align = PosAlign.left,
     this.height = PosTextSize.size1,
     this.width = PosTextSize.size1,
+    this.alternativeColor = false,
     this.fontType,
     this.codeTable,
   });
@@ -42,30 +44,31 @@ class PosStyles {
     this.height = PosTextSize.size1,
     this.width = PosTextSize.size1,
     this.fontType = PosFontType.fontA,
+    this.alternativeColor = false,
     this.codeTable = "CP437",
   });
 
-  PosStyles copyWith({
-    bool? bold,
-    bool? reverse,
-    bool? underline,
-    bool? turn90,
-    PosAlign? align,
-    PosTextSize? height,
-    PosTextSize? width,
-    PosFontType? fontType,
-    String? codeTable,
-  }) {
+  PosStyles copyWith(
+      {bool? bold,
+      bool? reverse,
+      bool? underline,
+      bool? turn90,
+      PosAlign? align,
+      PosTextSize? height,
+      PosTextSize? width,
+      PosFontType? fontType,
+      String? codeTable,
+      bool? alternativeColor}) {
     return PosStyles(
-      bold: bold ?? this.bold,
-      reverse: reverse ?? this.reverse,
-      underline: underline ?? this.underline,
-      turn90: turn90 ?? this.turn90,
-      align: align ?? this.align,
-      height: height ?? this.height,
-      width: width ?? this.width,
-      fontType: fontType ?? this.fontType,
-      codeTable: codeTable ?? this.codeTable,
-    );
+        bold: bold ?? this.bold,
+        reverse: reverse ?? this.reverse,
+        underline: underline ?? this.underline,
+        turn90: turn90 ?? this.turn90,
+        align: align ?? this.align,
+        height: height ?? this.height,
+        width: width ?? this.width,
+        fontType: fontType ?? this.fontType,
+        codeTable: codeTable ?? this.codeTable,
+        alternativeColor: alternativeColor ?? this.alternativeColor);
   }
 }
