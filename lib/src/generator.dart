@@ -68,17 +68,16 @@ class Generator {
   }
 
   Uint8List _encode(String text) {
-    // replace some non-ascii characters
-    text = text
-        .replaceAll("’", "'")
-        .replaceAll("´", "'")
-        .replaceAll("»", '"')
-        .replaceAll("•", '.');
-    List<int> textBytes = [];
-    textBytes += cKanjiOff.codeUnits;
-    textBytes += latin1.encode(text);
-    return Uint8List.fromList(textBytes);
-  }
+  // Filter out non-Windows-1252 characters
+  final filteredText = String.fromCharCodes(
+    text.runes.where((int rune) => rune >= 0x00 && rune <= 0xFF),
+  );
+
+  List<int> textBytes = [];
+  textBytes += cKanjiOff.codeUnits;
+  textBytes += latin1.encode(filteredText);
+  return Uint8List.fromList(textBytes);
+}
 
   /// Generate multiple bytes for a number: In lower and higher parts, or more parts as needed.
   ///
