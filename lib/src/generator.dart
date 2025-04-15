@@ -8,9 +8,12 @@
 
 import 'dart:convert';
 import 'dart:typed_data' show Uint8List;
+
+import 'package:esc_pos_utils/esc_pos_utils.dart';
+import 'package:gbk_codec/gbk_codec.dart';
 import 'package:hex/hex.dart';
 import 'package:image/image.dart';
-import 'package:esc_pos_utils/esc_pos_utils.dart';
+
 import 'commands.dart';
 
 class Generator {
@@ -68,16 +71,32 @@ class Generator {
   }
 
   Uint8List _encode(String text) {
-  // Filter out non-Windows-1252 characters
-  final filteredText = String.fromCharCodes(
-    text.runes.where((int rune) => rune >= 0x00 && rune <= 0xFF),
-  );
+    List<int> textBytes = [];
 
-  List<int> textBytes = [];
-  textBytes += cKanjiOff.codeUnits;
-  textBytes += latin1.encode(filteredText);
-  return Uint8List.fromList(textBytes);
-}
+    // Check if the text contains Chinese characters
+    final bool containsChinese = _containsChinese(text);
+
+    if (containsChinese) {
+      // Enable Kanji/Chinese character mode
+      textBytes += cKanjiOn.codeUnits;
+
+      // Encode with GB2312 (or GBK, which is backward-compatible)
+      textBytes += gbk_bytes.encode(text);
+
+      // Disable Kanji mode after printing
+      textBytes += cKanjiOff.codeUnits;
+    } else {
+      // Encode as normal UTF-8 for English or other characters
+      textBytes += latin1.encode(text);
+    }
+
+    return Uint8List.fromList(textBytes);
+  }
+
+  bool _containsChinese(String text) {
+    final chineseRegex = RegExp(r'[\u4E00-\u9FFF]');
+    return chineseRegex.hasMatch(text);
+  }
 
   /// Generate multiple bytes for a number: In lower and higher parts, or more parts as needed.
   ///
@@ -130,7 +149,7 @@ class Generator {
           x: left, y: 0, width: lineHeight, height: heightPx);
       if (slice.numChannels > 2) grayscale(slice);
       final imgBinary =
-      (slice.numChannels > 1) ? slice.convert(numChannels: 1) : slice;
+          (slice.numChannels > 1) ? slice.convert(numChannels: 1) : slice;
       final bytes = imgBinary.getBytes();
       blobs.add(bytes);
       left += lineHeight;
