@@ -5,7 +5,6 @@
  * Copyright (c) 2019-2020. All rights reserved.
  * See LICENSE for distribution and usage details.
  */
-
 import 'dart:convert';
 import 'dart:typed_data' show Uint8List;
 
@@ -85,12 +84,17 @@ class Generator {
 
       // Disable Kanji mode after printing
       textBytes += cKanjiOff.codeUnits;
+      return Uint8List.fromList(textBytes);
     } else {
-      // Encode as normal UTF-8 for English or other characters
-      textBytes += latin1.encode(text);
+      // Filter out non-Windows1252 characters
+      final filteredText = String.fromCharCodes(
+        text.runes.where((int rune) => rune >= 0x00 && rune <= 0xFF),
+      );
+      List<int> textBytes = [];
+      textBytes += cKanjiOff.codeUnits;
+      textBytes += latin1.encode(filteredText);
+      return Uint8List.fromList(textBytes);
     }
-
-    return Uint8List.fromList(textBytes);
   }
 
   bool _containsChinese(String text) {
