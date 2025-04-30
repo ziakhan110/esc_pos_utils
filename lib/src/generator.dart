@@ -76,7 +76,7 @@ class Generator {
     // Check if the text contains Chinese characters
     final bool containsChinese = _containsChinese(text);
 
-    if (containsChinese) {
+    if (containsChinese && chineseEnabled) {
       // Enable Kanji/Chinese character mode
       textBytes += cKanjiOn.codeUnits;
 
