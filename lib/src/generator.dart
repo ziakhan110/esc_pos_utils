@@ -9,8 +9,8 @@ import 'dart:convert';
 import 'dart:typed_data' show Uint8List;
 
 import 'package:esc_pos_utils/esc_pos_utils.dart';
+import 'package:flutter/foundation.dart';
 import 'package:gbk_codec/gbk_codec.dart';
-import 'package:hex/hex.dart';
 import 'package:image/image.dart';
 
 import 'commands.dart';
@@ -69,7 +69,8 @@ class Generator {
     }
   }
 
-  Uint8List _encode(String text) {
+  @protected
+  Uint8List encode(String text) {
     List<int> textBytes = [];
 
     // Check if the text contains Chinese characters
@@ -317,7 +318,7 @@ class Generator {
   }) {
     List<int> bytes = [];
     bytes += _text(
-      _encode(text),
+      encode(text),
       styles: styles,
     );
     // Ensure at least one line break after the text
@@ -456,7 +457,7 @@ class Generator {
               .add(PosColumn(text: '', width: col.width, styles: col.styles));
         }
         bytes += _text(
-          _encode(col.text),
+          encode(col.text),
           styles: col.styles,
           colInd: colInd,
           colWidth: col.width,
