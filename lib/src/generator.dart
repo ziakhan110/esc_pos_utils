@@ -686,7 +686,6 @@ class Generator {
 
     // Align
     if (colWidth != null) {
-      // Update fromPos
       final double toPos =
           _colIndToPosition(colInd + colWidth) - spaceBetweenRows;
       final double textLen = textBytes.length * charWidth;
@@ -701,13 +700,11 @@ class Generator {
       }
     }
 
-    final hexStr = fromPos.round().toRadixString(16).padLeft(3, '0');
-    final hexPair = HEX.decode(hexStr);
-
-    // Position
-    bytes += Uint8List.fromList(
-      List.from(cPos.codeUnits)..addAll([hexPair[1], hexPair[0]]),
-    );
+    // Set absolute horizontal print position using ESC $ nL nH
+    final position = fromPos.round();
+    final nL = position & 0xFF;
+    final nH = (position >> 8) & 0xFF;
+    bytes += [0x1B, 0x24, nL, nH]; // ESC $ command
 
     bytes += _setStyles(styles ?? globalStyles);
     bytes += textBytes;
