@@ -26,13 +26,13 @@ class TextGenerator extends Generator {
     int linesAfter = 0,
   }) {
     List<int> bytes = [];
-    bytes += _setSize(styles ?? globalStyles);
+    bytes += _setStyle(styles ?? globalStyles);
     bytes += _setAlign(styles?.align ?? globalStyles.align);
 
     bytes += _setFont();
     bytes += latin1.encode(text);
 
-    bytes += feed(1);
+    bytes += emptyLines(linesAfter + 1);
     return bytes;
   }
 
@@ -52,8 +52,8 @@ class TextGenerator extends Generator {
       int lineCharacters = _charsPerLine();
 
       int colWidth = (lineCharacters * col.width / 12).floor();
-      
-      bytes += _setSize(col.styles);
+
+      bytes += _setStyle(col.styles);
       final text = _setTextAlign(
           col.text.trimToWidth(colWidth), col.styles.align, colWidth);
       if (col.text.length > colWidth) {
@@ -80,10 +80,26 @@ class TextGenerator extends Generator {
         bytes += encode(text);
       }
     }
-    bytes += feed(1);
+    bytes += emptyLines(1);
     if (shouldPrintNewLine) {
       bytes += row(newCols, charset: charset);
     }
+    return bytes;
+  }
+
+  @override
+  List<int> hr({
+    String ch = '-',
+    int? len,
+    int linesAfter = 0,
+    PosStyles? styles,
+  }) {
+    List<int> bytes = [];
+    int lineCharacters = _charsPerLine();
+    String ch1 = ch.length == 1 ? ch : ch[0];
+    bytes +=
+        text(List.filled(lineCharacters, ch1).join(), linesAfter: linesAfter);
+    bytes += _setStyle(styles ?? globalStyles);
     return bytes;
   }
 
@@ -95,7 +111,7 @@ class TextGenerator extends Generator {
     }
   }
 
-  List<int> _setSize(PosStyles style) {
+  List<int> _setStyle(PosStyles style) {
     List<int> bytes = [];
     if (style.bold) {
       bytes += cBoldOn.codeUnits;
