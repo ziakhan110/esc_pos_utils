@@ -39,7 +39,7 @@ class Generator {
   });
 
   // ************************ Internal helpers ************************
-  int _getMaxCharsPerLine([PosFontType? font]) {
+  int getMaxCharsPerLine([PosFontType? font]) {
     if (font != null)
       return (font == PosFontType.fontA)
           ? this._paperSize.fontACharsPerLine
@@ -61,7 +61,7 @@ class Generator {
   }
 
   double _colIndToPosition(int colInd) {
-    final double width = _getMaxCharsPerLine() * _getCharWidth();
+    final double width = getMaxCharsPerLine() * _getCharWidth();
     if (colInd == 0) {
       return 0;
     } else {
@@ -247,13 +247,16 @@ class Generator {
     globalStyles = globalStyles.copyWith(fontType: font);
   }
 
-  List<int> _setStyles(PosStyles styles) {
+  @protected
+  List<int> setStyles(PosStyles styles, {bool applyAlign = true}) {
     List<int> bytes = [];
     PosAlign? align;
-    if (styles.align != globalStyles.align) {
-      align = styles.align;
-    } else {
-      align = globalStyles.align;
+    if (applyAlign) {
+      if (styles.align != globalStyles.align) {
+        align = styles.align;
+      } else {
+        align = globalStyles.align;
+      }
     }
     // Set font
     PosFontType? fontType;
@@ -481,7 +484,7 @@ class Generator {
   List<int> image(Image imgSrc, {PosAlign align = PosAlign.center}) {
     List<int> bytes = [];
     // Image alignment
-    bytes += _setStyles(PosStyles().copyWith(align: align));
+    bytes += setStyles(PosStyles().copyWith(align: align));
 
     final Image image = Image.from(imgSrc); // make a copy
 
@@ -531,7 +534,7 @@ class Generator {
   }) {
     List<int> bytes = [];
     // Image alignment
-    bytes += _setStyles(PosStyles().copyWith(align: align));
+    bytes += setStyles(PosStyles().copyWith(align: align));
 
     final int widthPx = image.width;
     final int heightPx = image.height;
@@ -583,7 +586,7 @@ class Generator {
   }) {
     List<int> bytes = [];
     // Set alignment
-    bytes += _setStyles(PosStyles().copyWith(align: align));
+    bytes += setStyles(PosStyles().copyWith(align: align));
 
     // Set text position
     bytes += cBarcodeSelectPos.codeUnits + [textPos.value];
@@ -623,7 +626,7 @@ class Generator {
   }) {
     List<int> bytes = [];
     // Set alignment
-    bytes += _setStyles(PosStyles().copyWith(align: align));
+    bytes += setStyles(PosStyles().copyWith(align: align));
     QRCode qr = QRCode(text, size, cor);
     bytes += qr.bytes;
     return bytes;
@@ -649,10 +652,10 @@ class Generator {
     PosStyles? styles,
   }) {
     List<int> bytes = [];
-    int n = len ?? _getMaxCharsPerLine(styles?.fontType);
+    int n = len ?? getMaxCharsPerLine(styles?.fontType);
     String ch1 = ch.length == 1 ? ch : ch[0];
     bytes += text(List.filled(n, ch1).join(), linesAfter: linesAfter);
-    bytes += _setStyles(styles ?? globalStyles);
+    bytes += setStyles(styles ?? globalStyles);
     return bytes;
   }
 
@@ -707,7 +710,7 @@ class Generator {
     final nH = (position >> 8) & 0xFF;
     bytes += [0x1B, 0x24, nL, nH]; // ESC $ command
 
-    bytes += _setStyles(styles ?? globalStyles);
+    bytes += setStyles(styles ?? globalStyles);
     bytes += textBytes;
     return bytes;
   }

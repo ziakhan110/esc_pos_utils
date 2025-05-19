@@ -8,16 +8,14 @@ import 'commands.dart';
 class TextGenerator extends Generator {
   PosStyles globalStyles =
       PosStyles(fontType: PosFontType.fontA, align: PosAlign.center);
-  final PaperSize _paperSize;
-  PosFontType? _font;
-  int maxCharsPerLine = 0;
 
   TextGenerator(
-    this._paperSize,
-    CapabilityProfile _profile, {
+    super._paperSize,
+    super._profile, {
+    super.spaceBetweenRows = 5,
     super.chineseEnabled = false,
     this.globalStyles = const PosStyles(fontType: PosFontType.fontA),
-  }) : super(_paperSize, _profile);
+  }) : super();
 
   @override
   List<int> text(
@@ -26,10 +24,8 @@ class TextGenerator extends Generator {
     int linesAfter = 0,
   }) {
     List<int> bytes = [];
-    bytes += _setStyle(styles ?? globalStyles);
-    bytes += _setAlign(styles?.align ?? globalStyles.align);
+    bytes += setStyles(styles ?? globalStyles);
 
-    bytes += _setFont();
     bytes += latin1.encode(text);
 
     bytes += emptyLines(linesAfter + 1);
@@ -49,12 +45,12 @@ class TextGenerator extends Generator {
     for (var col in cols) {
       bytes += cAlignCenter.codeUnits;
 
-      int lineCharacters = _charsPerLine();
+      int lineCharacters = getMaxCharsPerLine();
 
       int colWidth = (lineCharacters * col.width / 12).floor();
 
-      bytes += _setStyle(col.styles);
-      final text = _setTextAlign(
+      bytes += setStyles(col.styles);
+      final text = _setTextPadding(
           col.text.trimToWidth(colWidth), col.styles.align, colWidth);
       if (col.text.length > colWidth) {
         shouldPrintNewLine = true;
@@ -74,7 +70,6 @@ class TextGenerator extends Generator {
         ));
       }
       if (charset != null) {
-        bytes += _setFont();
         bytes += Encoding.getByName(charset)?.encode(text) ?? [];
       } else {
         bytes += encode(text);
@@ -87,42 +82,7 @@ class TextGenerator extends Generator {
     return bytes;
   }
 
-  @override
-  List<int> hr({
-    String ch = '-',
-    int? len,
-    int linesAfter = 0,
-    PosStyles? styles,
-  }) {
-    List<int> bytes = [];
-    int lineCharacters = _charsPerLine();
-    String ch1 = ch.length == 1 ? ch : ch[0];
-    bytes +=
-        text(List.filled(lineCharacters, ch1).join(), linesAfter: linesAfter);
-    bytes += _setStyle(styles ?? globalStyles);
-    return bytes;
-  }
-
-  List<int> _setFont() {
-    if (this._font == PosFontType.fontA) {
-      return cFontA.codeUnits;
-    } else {
-      return cFontB.codeUnits;
-    }
-  }
-
-  List<int> _setStyle(PosStyles style) {
-    List<int> bytes = [];
-    if (style.bold) {
-      bytes += cBoldOn.codeUnits;
-    } else {
-      bytes += cBoldOff.codeUnits;
-    }
-    return bytes += List.from(cSizeGSn.codeUnits)
-      ..add(16 * (style.width.value - 1) + (style.height.value - 1));
-  }
-
-  String _setTextAlign(String text, PosAlign align, int width) {
+  String _setTextPadding(String text, PosAlign align, int width) {
     switch (align) {
       case PosAlign.left:
         return text.padRight(width);
@@ -133,28 +93,4 @@ class TextGenerator extends Generator {
     }
   }
 
-  List<int> _setAlign(PosAlign align) {
-    switch (align) {
-      case PosAlign.left:
-        return cAlignLeft.codeUnits;
-      case PosAlign.center:
-        return cAlignCenter.codeUnits;
-      case PosAlign.right:
-        return cAlignRight.codeUnits;
-    }
-  }
-
-  setMaxCharsPerLine(int chars) {
-    this.maxCharsPerLine = chars;
-  }
-
-  int _charsPerLine([PosFontType? font]) {
-    if (font != null)
-      return (font == PosFontType.fontA)
-          ? this._paperSize.fontACharsPerLine
-          : this._paperSize.fontBCharsPerLine;
-    return (globalStyles.fontType == PosFontType.fontA)
-        ? this._paperSize.fontACharsPerLine
-        : this._paperSize.fontBCharsPerLine;
-  }
 }
