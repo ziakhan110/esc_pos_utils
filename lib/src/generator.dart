@@ -6,7 +6,6 @@
  * See LICENSE for distribution and usage details.
  */
 import 'dart:convert';
-import 'dart:typed_data' show Uint8List;
 
 import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:flutter/foundation.dart';
