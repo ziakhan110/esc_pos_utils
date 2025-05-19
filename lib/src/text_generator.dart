@@ -47,7 +47,7 @@ class TextGenerator extends Generator {
 
   for (var i = 0; i < cols.length; i++) {
     var col = cols[i];
-    bytes += cAlignCenter.codeUnits;
+    bytes += cAlignCenter;
 
     int colWidth = (lineCharacters * col.width / 12).floor();
 

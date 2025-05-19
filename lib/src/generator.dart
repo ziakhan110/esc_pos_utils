@@ -77,13 +77,13 @@ class Generator {
 
     if (containsChinese && chineseEnabled) {
       // Enable Kanji/Chinese character mode
-      textBytes += cKanjiOn.codeUnits;
+      textBytes += cKanjiOn;
 
       // Encode with GB2312 (or GBK, which is backward-compatible)
       textBytes += gbk_bytes.encode(text);
 
       // Disable Kanji mode after printing
-      textBytes += cKanjiOff.codeUnits;
+      textBytes += cKanjiOff;
       return Uint8List.fromList(textBytes);
     } else {
       // Filter out non-Windows1252 characters
@@ -91,7 +91,7 @@ class Generator {
         text.runes.where((int rune) => rune >= 0x00 && rune <= 0xFF),
       );
       List<int> textBytes = [];
-      textBytes += cKanjiOff.codeUnits;
+      textBytes += cKanjiOff;
       textBytes += latin1.encode(filteredText);
       return Uint8List.fromList(textBytes);
     }
@@ -224,7 +224,7 @@ class Generator {
   /// Clear the buffer and reset text styles
   List<int> reset() {
     List<int> bytes = [];
-    bytes += cInit.codeUnits;
+    bytes += cInit;
     globalStyles = PosStyles();
     return bytes;
   }
@@ -235,7 +235,7 @@ class Generator {
     List<int> bytes = [];
     _codeTable = codeTable;
     bytes += Uint8List.fromList(
-      List.from(cCodeTable.codeUnits)..add(_profile.getCodePageId(codeTable)),
+      List.from(cCodeTable)..add(_profile.getCodePageId(codeTable)),
     );
     return bytes;
   }
@@ -265,38 +265,34 @@ class Generator {
     if (styles.fontType != null) {
       fontType = styles.fontType;
     }
-    bytes += latin1.encode(align == PosAlign.left
+    bytes += align == PosAlign.left
         ? cAlignLeft
-        : (align == PosAlign.center ? cAlignCenter : cAlignRight));
-    bytes += styles.bold ? cBoldOn.codeUnits : cBoldOff.codeUnits;
+        : (align == PosAlign.center ? cAlignCenter : cAlignRight);
+    bytes += styles.bold ? cBoldOn : cBoldOff;
     bytes += styles.turn90 ? cTurn90On : cTurn90Off;
-    bytes += styles.reverse ? cReverseOn.codeUnits : cReverseOff.codeUnits;
-    bytes +=
-        styles.underline ? cUnderline1dot.codeUnits : cUnderlineOff.codeUnits;
+    bytes += styles.reverse ? cReverseOn : cReverseOff;
+    bytes += styles.underline ? cUnderline1dot : cUnderlineOff;
 
-    bytes +=
-        fontType == PosFontType.fontA ? cFontA.codeUnits : cFontB.codeUnits;
+    bytes += fontType == PosFontType.fontA ? cFontA : cFontB;
 
     // Characters size
     bytes += Uint8List.fromList(
-      List.from(cSizeGSn.codeUnits)
+      List.from(cSizeGSn)
         ..add(PosTextSize.decSize(styles.height, styles.width)),
     );
 
     // Set local code table
     if (styles.codeTable != null) {
       bytes += Uint8List.fromList(
-        List.from(cCodeTable.codeUnits)
-          ..add(_profile.getCodePageId(styles.codeTable)),
+        List.from(cCodeTable)..add(_profile.getCodePageId(styles.codeTable)),
       );
     } else if (_codeTable != null) {
       bytes += Uint8List.fromList(
-        List.from(cCodeTable.codeUnits)
-          ..add(_profile.getCodePageId(_codeTable)),
+        List.from(cCodeTable)..add(_profile.getCodePageId(_codeTable)),
       );
     } else if (globalStyles.codeTable != null) {
       bytes += Uint8List.fromList(
-        List.from(cCodeTable.codeUnits)
+        List.from(cCodeTable)
           ..add(_profile.getCodePageId(globalStyles.codeTable)),
       );
     }
@@ -307,7 +303,7 @@ class Generator {
   List<int> rawBytes(List<int> cmd, {bool isKanji = false}) {
     List<int> bytes = [];
     if (!isKanji) {
-      bytes += cKanjiOff.codeUnits;
+      bytes += cKanjiOff;
     }
     bytes += Uint8List.fromList(cmd);
     return bytes;
@@ -346,7 +342,7 @@ class Generator {
     List<int> bytes = [];
     if (n >= 0 && n <= 255) {
       bytes += Uint8List.fromList(
-        List.from(cFeedN.codeUnits)..add(n),
+        List.from(cFeedN)..add(n),
       );
     }
     return bytes;
@@ -359,9 +355,9 @@ class Generator {
     List<int> bytes = [];
     bytes += emptyLines(5);
     if (mode == PosCutMode.partial) {
-      bytes += cCutPart.codeUnits;
+      bytes += cCutPart;
     } else {
-      bytes += cCutFull.codeUnits;
+      bytes += cCutFull;
     }
     return bytes;
   }
@@ -372,11 +368,11 @@ class Generator {
   /// If global code table is null, default printer code table is used.
   List<int> printCodeTable({String? codeTable}) {
     List<int> bytes = [];
-    bytes += cKanjiOff.codeUnits;
+    bytes += cKanjiOff;
 
     if (codeTable != null) {
       bytes += Uint8List.fromList(
-        List.from(cCodeTable.codeUnits)..add(_profile.getCodePageId(codeTable)),
+        List.from(cCodeTable)..add(_profile.getCodePageId(codeTable)),
       );
     }
 
@@ -403,7 +399,7 @@ class Generator {
     }
 
     bytes += Uint8List.fromList(
-      List.from(cBeep.codeUnits)..addAll([beepCount, duration.value]),
+      List.from(cBeep)..addAll([beepCount, duration.value]),
     );
 
     beep(n: n - 9, duration: duration);
@@ -414,7 +410,7 @@ class Generator {
   List<int> reverseFeed(int n) {
     List<int> bytes = [];
     bytes += Uint8List.fromList(
-      List.from(cReverseFeedN.codeUnits)..add(n),
+      List.from(cReverseFeedN)..add(n),
     );
     return bytes;
   }
@@ -505,7 +501,7 @@ class Generator {
     final int heightPx = imageRotated.height;
     const int densityByte = 1 + 32;
 
-    final List<int> header = List.from(cBitImg.codeUnits);
+    final List<int> header = List.from(cBitImg);
     header.add(densityByte);
     header.addAll(_intLowHigh(heightPx, 2));
 
@@ -545,14 +541,14 @@ class Generator {
       final int densityByte =
           (highDensityVertical ? 0 : 1) + (highDensityHorizontal ? 0 : 2);
 
-      final List<int> header = List.from(cRasterImg2.codeUnits);
+      final List<int> header = List.from(cRasterImg2);
       header.add(densityByte); // m
       header.addAll(_intLowHigh(widthBytes, 2)); // xL xH
       header.addAll(_intLowHigh(heightPx, 2)); // yL yH
       bytes += List.from(header)..addAll(rasterizedData);
     } else if (imageFn == PosImageFn.graphics) {
       // 'GS ( L' - FN_112 (Image data)
-      final List<int> header1 = List.from(cRasterImg.codeUnits);
+      final List<int> header1 = List.from(cRasterImg);
       header1.addAll(_intLowHigh(widthBytes * heightPx + 10, 2)); // pL pH
       header1.addAll([48, 112, 48]); // m=48, fn=112, a=48
       header1.addAll([1, 1]); // bx=1, by=1
@@ -562,7 +558,7 @@ class Generator {
       bytes += List.from(header1)..addAll(rasterizedData);
 
       // 'GS ( L' - FN_50 (Run print)
-      final List<int> header2 = List.from(cRasterImg.codeUnits);
+      final List<int> header2 = List.from(cRasterImg);
       header2.addAll([2, 0]); // pL pH
       header2.addAll([48, 50]); // m fn[2,50]
       bytes += List.from(header2);
@@ -588,24 +584,24 @@ class Generator {
     bytes += setStyles(PosStyles().copyWith(align: align));
 
     // Set text position
-    bytes += cBarcodeSelectPos.codeUnits + [textPos.value];
+    bytes += cBarcodeSelectPos + [textPos.value];
 
     // Set font
     if (font != null) {
-      bytes += cBarcodeSelectFont.codeUnits + [font.value];
+      bytes += cBarcodeSelectFont + [font.value];
     }
 
     // Set width
     if (width != null && width >= 0) {
-      bytes += cBarcodeSetW.codeUnits + [width];
+      bytes += cBarcodeSetW + [width];
     }
     // Set height
     if (height != null && height >= 1 && height <= 255) {
-      bytes += cBarcodeSetH.codeUnits + [height];
+      bytes += cBarcodeSetH + [height];
     }
 
     // Print barcode
-    final header = cBarcodePrint.codeUnits + [barcode.type!.value];
+    final header = cBarcodePrint + [barcode.type!.value];
     if (barcode.type!.value <= 6) {
       // Function A
       bytes += header + barcode.data! + [0];
@@ -635,9 +631,9 @@ class Generator {
   List<int> drawer({PosDrawer pin = PosDrawer.pin2}) {
     List<int> bytes = [];
     if (pin == PosDrawer.pin2) {
-      bytes += cCashDrawerPin2.codeUnits;
+      bytes += cCashDrawerPin2;
     } else {
-      bytes += cCashDrawerPin5.codeUnits;
+      bytes += cCashDrawerPin5;
     }
     return bytes;
   }

@@ -1,4 +1,3 @@
-
 /*
  * esc_pos_utils
  * Created by Andrey U.
@@ -7,63 +6,61 @@
  * See LICENSE for distribution and usage details.
  */
 
-const esc = '\x1B';
-const gs = '\x1D';
-const fs = '\x1C';
+const int esc = 0x1B;
+const int gs = 0x1D;
+const int fs = 0x1C;
 
 // Miscellaneous
-const cInit = '$esc@'; // Initialize printer
-const cBeep = '${esc}B'; // Beeper [count] [duration]
+const List<int> cInit = [esc, 0x40]; // Initialize printer | ESC @
+const List<int> cBeep = [esc, 0x42]; // Beeper [count] [duration] | ESC B
 
 // Mech. Control
-const cCutFull = '${gs}V0'; // Full cut
-const cCutPart = '${gs}V1'; // Partial cut
+const List<int> cCutFull = [gs, 0x56, 0x30]; // Full cut | GS V 0
+const List<int> cCutPart = [gs, 0x56, 0x31]; // Partial cut | GS V 1
 
 // Character
-const cReverseOn = '${gs}B\x01'; // Turn white/black reverse print mode on
-const cReverseOff = '${gs}B\x00'; // Turn white/black reverse print mode off
-const cSizeGSn = '$gs!'; // Select character size [N]
-const cSizeESCn = '$esc!'; // Select character size [N]
-const cUnderlineOff = '$esc-\x00'; // Turns off underline mode
-const cUnderline1dot = '$esc-\x01'; // Turns on underline mode (1-dot thick)
-const cUnderline2dots = '$esc-\x02'; // Turns on underline mode (2-dots thick)
-const cBoldOn = '${esc}E\x01'; // Turn emphasized mode on
-const cBoldOff = '${esc}E\x00'; // Turn emphasized mode off
-const cFontA = '${esc}M\x00'; // Font A
-const cFontB = '${esc}M\x01'; // Font B
-const List<int> cTurn90On = [0x1B, 0x56, 0x01]; // Turn 90° clockwise rotation mode on
-const List<int> cTurn90Off = [0x1B, 0x56, 0x00]; // Turn 90° clockwise rotation mode off
-const cCodeTable = '${esc}t'; // Select character code table [N]
-const cKanjiOn = '$fs&'; // Select Kanji character mode
-const cKanjiOff = '$fs.'; // Cancel Kanji character mode
+const List<int> cReverseOn = [gs, 0x42, 0x01]; // Reverse print mode on | GS B 1
+const List<int> cReverseOff = [gs, 0x42, 0x00]; // Reverse print mode off | GS B 0
+const List<int> cSizeGSn = [gs, 0x21]; // Select character size [N] | GS !
+const List<int> cSizeESCn = [esc, 0x21]; // Select character size [N] | ESC !
+const List<int> cUnderlineOff = [esc, 0x2D, 0x00]; // Underline off | ESC - 0
+const List<int> cUnderline1dot = [esc, 0x2D, 0x01]; // Underline 1-dot | ESC - 1
+const List<int> cUnderline2dots = [esc, 0x2D, 0x02]; // Underline 2-dots | ESC - 2
+const List<int> cBoldOn = [esc, 0x45, 0x01]; // Bold on | ESC E 1
+const List<int> cBoldOff = [esc, 0x45, 0x00]; // Bold off | ESC E 0
+const List<int> cFontA = [esc, 0x4D, 0x00]; // Font A | ESC M 0
+const List<int> cFontB = [esc, 0x4D, 0x01]; // Font B | ESC M 1
+const List<int> cTurn90On = [esc, 0x56, 0x01]; // Rotate 90° on | ESC V 1
+const List<int> cTurn90Off = [esc, 0x56, 0x00]; // Rotate 90° off | ESC V 0
+const List<int> cCodeTable = [esc, 0x74]; // Select code table [N] | ESC t
+const List<int> cKanjiOn = [fs, 0x26]; // Kanji mode on | FS &
+const List<int> cKanjiOff = [fs, 0x2E]; // Kanji mode off | FS .
 
 // Print Position
-const cAlignLeft = '${esc}a0'; // Left justification
-const cAlignCenter = '${esc}a1'; // Centered
-const cAlignRight = '${esc}a2'; // Right justification
-const cPos = '$esc\$'; // Set absolute print position [nL] [nH]
+const List<int> cAlignLeft = [esc, 0x61, 0x00]; // Align left | ESC a 0
+const List<int> cAlignCenter = [esc, 0x61, 0x01]; // Align center | ESC a 1
+const List<int> cAlignRight = [esc, 0x61, 0x02]; // Align right | ESC a 2
+const List<int> cPos = [esc, 0x24]; // Set print position [nL] [nH] | ESC $
 
-// Print
-const cFeedN = '${esc}d'; // Print and feed n lines [N]
-const cReverseFeedN = '${esc}e'; // Print and reverse feed n lines [N]
+ // Print
+const List<int> cFeedN = [esc, 0x64]; // Print and feed n lines [N] | ESC d
+const List<int> cReverseFeedN = [esc, 0x65]; // Reverse feed n lines [N] | ESC e
 
 // Bit Image
-const cRasterImg = '$gs(L'; // Print image - raster bit format (graphics)
-const cRasterImg2 =
-    '${gs}v0'; // Print image - raster bit format (bitImageRaster) [obsolete]
-const cBitImg = '$esc*'; // Print image - column format
+const List<int> cRasterImg = [gs, 0x28, 0x4C]; // Print raster bit image | GS ( L
+const List<int> cRasterImg2 = [gs, 0x76, 0x30]; // Obsolete raster format | GS v 0
+const List<int> cBitImg = [esc, 0x2A]; // Print column image | ESC *
 
 // Barcode
-const cBarcodeSelectPos =
-    '${gs}H'; // Select print position of HRI characters [N]
-const cBarcodeSelectFont = '${gs}f'; // Select font for HRI characters [N]
-const cBarcodeSetH = '${gs}h'; // Set barcode height [N]
-const cBarcodeSetW = '${gs}w'; // Set barcode width [N]
-const cBarcodePrint = '${gs}k'; // Print barcode
+const List<int> cBarcodeSelectPos = [gs, 0x48]; // HRI position | GS H
+const List<int> cBarcodeSelectFont = [gs, 0x66]; // HRI font | GS f
+const List<int> cBarcodeSetH = [gs, 0x68]; // Barcode height | GS h
+const List<int> cBarcodeSetW = [gs, 0x77]; // Barcode width | GS w
+const List<int> cBarcodePrint = [gs, 0x6B]; // Print barcode | GS k
 
 // Cash Drawer Open
-const cCashDrawerPin2 = '${esc}p030';
-const cCashDrawerPin5 = '${esc}p130';
+const List<int> cCashDrawerPin2 = [esc, 0x70, 0x30, 0x3C, 0x78]; // Pulse pin 2 | ESC p 0 60 120
+const List<int> cCashDrawerPin5 = [esc, 0x70, 0x31, 0x3C, 0x78]; // Pulse pin 5 | ESC p 1 60 120
 
 // QR Code
-const cQrHeader = '$gs(k';
+const List<int> cQrHeader = [gs, 0x28, 0x6B]; // QR code header | GS ( k

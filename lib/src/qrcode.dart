@@ -47,25 +47,25 @@ class QRCode {
   QRCode(String text, QRSize size, QRCorrection level) {
     // FN 167. QR Code: Set the size of module
     // pL pH cn fn n
-    bytes += cQrHeader.codeUnits + [0x03, 0x00, 0x31, 0x43] + [size.value];
+    bytes += cQrHeader + [0x03, 0x00, 0x31, 0x43] + [size.value];
 
     // FN 169. QR Code: Select the error correction level
     // pL pH cn fn n
-    bytes += cQrHeader.codeUnits + [0x03, 0x00, 0x31, 0x45] + [level.value];
+    bytes += cQrHeader + [0x03, 0x00, 0x31, 0x45] + [level.value];
 
     // FN 180. QR Code: Store the data in the symbol storage area
     List<int> textBytes = latin1.encode(text);
     // pL pH cn fn m
     bytes +=
-        cQrHeader.codeUnits + [textBytes.length + 3, 0x00, 0x31, 0x50, 0x30];
+        cQrHeader + [textBytes.length + 3, 0x00, 0x31, 0x50, 0x30];
     bytes += textBytes;
 
     // FN 182. QR Code: Transmit the size information of the symbol data in the symbol storage area
     // pL pH cn fn m
-    bytes += cQrHeader.codeUnits + [0x03, 0x00, 0x31, 0x52, 0x30];
+    bytes += cQrHeader + [0x03, 0x00, 0x31, 0x52, 0x30];
 
     // FN 181. QR Code: Print the symbol data in the symbol storage area
     // pL pH cn fn m
-    bytes += cQrHeader.codeUnits + [0x03, 0x00, 0x31, 0x51, 0x30];
+    bytes += cQrHeader + [0x03, 0x00, 0x31, 0x51, 0x30];
   }
 }
