@@ -269,7 +269,7 @@ class Generator {
         ? cAlignLeft
         : (align == PosAlign.center ? cAlignCenter : cAlignRight);
     bytes += styles.bold ? cBoldOn : cBoldOff;
-    bytes += styles.turn90 ? cTurn90On : cTurn90Off;
+    // bytes += styles.turn90 ? cTurn90On : cTurn90Off;
     bytes += styles.reverse ? cReverseOn : cReverseOff;
     bytes += styles.underline ? cUnderline1dot : cUnderlineOff;
 
