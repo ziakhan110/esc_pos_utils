@@ -133,7 +133,6 @@ class TextGenerator extends Generator {
         ? cAlignLeft
         : (align == PosAlign.center ? cAlignCenter : cAlignRight);
     bytes += styles.bold ? cBoldOn : cBoldOff;
-    // bytes += styles.turn90 ? cTurn90On : cTurn90Off;
     bytes += styles.underline ? cUnderline1dot : cUnderlineOff;
 
     bytes += fontType == PosFontType.fontA ? cFontA : cFontB;
