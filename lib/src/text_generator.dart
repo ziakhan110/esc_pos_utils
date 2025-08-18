@@ -3,8 +3,6 @@ import 'dart:convert';
 import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:esc_pos_utils/src/extensions.dart';
 
-import 'commands.dart';
-
 class TextGenerator extends Generator {
   PosStyles globalStyles =
       PosStyles(fontType: PosFontType.fontA, align: PosAlign.center);
@@ -47,7 +45,6 @@ class TextGenerator extends Generator {
 
   for (var i = 0; i < cols.length; i++) {
     var col = cols[i];
-    bytes += cAlignCenter;
 
     int colWidth = (lineCharacters * col.width / 12).floor();
 
