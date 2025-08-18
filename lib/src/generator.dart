@@ -21,9 +21,11 @@ class Generator {
   // Ticket config
   final PaperSize _paperSize;
   CapabilityProfile _profile;
+  CapabilityProfile get profile => _profile;
 
   // Global styles
   String? _codeTable;
+  String? get codeTable => _codeTable;
   bool chineseEnabled = false;
 
   // Current styles
