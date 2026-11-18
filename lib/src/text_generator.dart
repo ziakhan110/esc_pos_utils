@@ -21,6 +21,14 @@ class TextGenerator extends Generator {
     PosStyles? styles,
     int linesAfter = 0,
   }) {
+    if (chineseEnabled && containsChinese(text)) {
+      return super.text(
+        text,
+        styles: styles ?? globalStyles,
+        linesAfter: linesAfter,
+      );
+    }
+
     List<int> bytes = [];
     bytes += setStyles(styles ?? globalStyles);
 
@@ -31,6 +39,10 @@ class TextGenerator extends Generator {
   }
 
   List<int> row(List<PosColumn> cols, {String? charset}) {
+  if (chineseEnabled && cols.any((col) => containsChinese(col.text))) {
+    return super.row(cols);
+  }
+
   final isSumValid = cols.fold(0, (int sum, col) => sum + col.width) == 12;
 
   if (!isSumValid) {

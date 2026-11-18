@@ -70,36 +70,27 @@ class Generator {
 
   @protected
   Uint8List encode(String text) {
-    List<int> textBytes = [];
-
-    // Check if the text contains Chinese characters
-    final bool containsChinese = _containsChinese(text);
-
-    if (containsChinese && chineseEnabled) {
-      // Enable Kanji/Chinese character mode
-      textBytes += cKanjiOn;
-
-      // Encode with GB2312 (or GBK, which is backward-compatible)
-      textBytes += gbk_bytes.encode(text);
-
-      // Disable Kanji mode after printing
-      textBytes += cKanjiOff;
-      return Uint8List.fromList(textBytes);
-    } else {
-      // Filter out non-Windows1252 characters
-      final filteredText = String.fromCharCodes(
-        text.runes.where((int rune) => rune >= 0x00 && rune <= 0xFF),
-      );
-      List<int> textBytes = [];
-      textBytes += cKanjiOff;
-      textBytes += latin1.encode(filteredText);
-      return Uint8List.fromList(textBytes);
+    if (chineseEnabled && containsChinese(text)) {
+      // Kanji stays on. Callers line-feed, then send FS .
+      return Uint8List.fromList([
+        ...cKanjiOn,
+        ..._gbkTicketBytes(text),
+      ]);
     }
+
+    // Filter out non-Windows1252 characters
+    final filteredText = String.fromCharCodes(
+      text.runes.where((int rune) => rune >= 0x00 && rune <= 0xFF),
+    );
+    List<int> textBytes = [];
+    textBytes += cKanjiOff;
+    textBytes += latin1.encode(filteredText);
+    return Uint8List.fromList(textBytes);
   }
 
-  bool _containsChinese(String text) {
-    final chineseRegex = RegExp(r'[\u4E00-\u9FFF]');
-    return chineseRegex.hasMatch(text);
+  /// CJK, CJK punctuation, and fullwidth forms. ASCII and Latin-1 are not.
+  bool containsChinese(String text) {
+    return _chinesePattern.hasMatch(text);
   }
 
   /// Generate multiple bytes for a number: In lower and higher parts, or more parts as needed.
@@ -247,7 +238,11 @@ class Generator {
   }
 
   @protected
-  List<int> setStyles(PosStyles styles, {bool applyAlign = true}) {
+  List<int> setStyles(
+    PosStyles styles, {
+    bool applyAlign = true,
+    bool applyCodeTable = true,
+  }) {
     List<int> bytes = [];
     PosAlign? align;
     if (applyAlign) {
@@ -281,20 +276,22 @@ class Generator {
         ..add(PosTextSize.decSize(styles.height, styles.width)),
     );
 
-    // Set local code table
-    if (styles.codeTable != null) {
-      bytes += Uint8List.fromList(
-        List.from(cCodeTable)..add(_profile.getCodePageId(styles.codeTable)),
-      );
-    } else if (_codeTable != null) {
-      bytes += Uint8List.fromList(
-        List.from(cCodeTable)..add(_profile.getCodePageId(_codeTable)),
-      );
-    } else if (globalStyles.codeTable != null) {
-      bytes += Uint8List.fromList(
-        List.from(cCodeTable)
-          ..add(_profile.getCodePageId(globalStyles.codeTable)),
-      );
+    // A single-byte code page in front of GBK makes the printer leave Kanji.
+    if (applyCodeTable) {
+      if (styles.codeTable != null) {
+        bytes += Uint8List.fromList(
+          List.from(cCodeTable)..add(_profile.getCodePageId(styles.codeTable)),
+        );
+      } else if (_codeTable != null) {
+        bytes += Uint8List.fromList(
+          List.from(cCodeTable)..add(_profile.getCodePageId(_codeTable)),
+        );
+      } else if (globalStyles.codeTable != null) {
+        bytes += Uint8List.fromList(
+          List.from(cCodeTable)
+            ..add(_profile.getCodePageId(globalStyles.codeTable)),
+        );
+      }
     }
     return bytes;
   }
@@ -314,13 +311,16 @@ class Generator {
     PosStyles? styles,
     int linesAfter = 0,
   }) {
+    final chineseLine = chineseEnabled && containsChinese(text);
     List<int> bytes = [];
     bytes += _text(
       encode(text),
       styles: styles,
+      applyCodeTable: !chineseLine,
     );
-    // Ensure at least one line break after the text
     bytes += emptyLines(linesAfter + 1);
+    // FS . after the line feed, so Kanji is still on when the printer feeds.
+    if (chineseLine) bytes += cKanjiOff;
     return bytes;
   }
 
@@ -427,6 +427,10 @@ class Generator {
 
     if (!isSumValid) {
       throw Exception('Total columns width must be equal to 12');
+    }
+
+    if (chineseEnabled && cols.any((col) => containsChinese(col.text))) {
+      return _chineseRow(cols);
     }
 
     void _processRow() {
@@ -678,6 +682,7 @@ class Generator {
     PosStyles? styles,
     int colInd = 0,
     int? colWidth,
+    bool applyCodeTable = true,
   }) {
     List<int> bytes = [];
     double charWidth = _getCharWidth(styles);
@@ -705,9 +710,146 @@ class Generator {
     final nH = (position >> 8) & 0xFF;
     bytes += [0x1B, 0x24, nL, nH]; // ESC $ command
 
-    bytes += setStyles(styles ?? globalStyles);
+    bytes += setStyles(
+      styles ?? globalStyles,
+      applyCodeTable: applyCodeTable,
+    );
     bytes += textBytes;
     return bytes;
   }
+
+  /// One ticket row that contains Chinese.
+  ///
+  /// Each CJK / fullwidth character takes two cells, so the name wraps before
+  /// the price. Kanji stays on across the columns and through the line feed.
+  List<int> _chineseRow(List<PosColumn> cols) {
+    final current = [
+      for (final col in cols)
+        PosColumn(text: col.text, width: col.width, styles: col.styles),
+    ];
+    final bytes = <int>[];
+    while (current.any((col) => col.text.isNotEmpty)) {
+      for (var i = 0; i < current.length; i++) {
+        final col = current[i];
+        final colInd =
+            current.take(i).fold<int>(0, (total, item) => total + item.width);
+        final budget = _columnCellBudget(col.styles, colInd, col.width);
+        final fit = _takeCells(col.text, budget);
+        current[i] = PosColumn(
+          text: col.text.substring(fit.length),
+          width: col.width,
+          styles: col.styles,
+        );
+        bytes.addAll(
+          _chineseColumnBytes(fit, col.styles, colInd, col.width),
+        );
+      }
+      bytes.addAll(emptyLines(1));
+      bytes.addAll(cKanjiOff);
+    }
+    return bytes;
+  }
+
+  List<int> _chineseColumnBytes(
+    String text,
+    PosStyles styles,
+    int colInd,
+    int colWidth,
+  ) {
+    final position =
+        _chineseAlignedStart(text, styles, colInd, colWidth).round();
+    return [
+      0x1B,
+      0x24,
+      position & 0xFF,
+      (position >> 8) & 0xFF,
+      ...setStyles(styles, applyCodeTable: false),
+      ...cKanjiOn,
+      ..._gbkTicketBytes(text),
+    ];
+  }
+
+  double _chineseAlignedStart(
+    String text,
+    PosStyles styles,
+    int colInd,
+    int colWidth,
+  ) {
+    final charWidth = _getCharWidth(styles);
+    var fromPos = _colIndToPosition(colInd);
+    final toPos = _colIndToPosition(colInd + colWidth) - spaceBetweenRows;
+    final textLen = _displayCells(text) * charWidth;
+    if (styles.align == PosAlign.right) {
+      fromPos = toPos - textLen;
+    } else if (styles.align == PosAlign.center) {
+      fromPos = fromPos + (toPos - fromPos) / 2 - textLen / 2;
+    }
+    if (fromPos < 0) fromPos = 0;
+    return fromPos;
+  }
+
+  int _columnCellBudget(PosStyles styles, int colInd, int colWidth) {
+    final charWidth = _getCharWidth(styles);
+    final fromPos = _colIndToPosition(colInd);
+    final toPos = _colIndToPosition(colInd + colWidth) - spaceBetweenRows;
+    final max = ((toPos - fromPos) / charWidth).floor();
+    return max < 1 ? 1 : max;
+  }
+
+  int _displayCells(String text) {
+    var cells = 0;
+    for (final rune in text.runes) {
+      cells += _isWidePrintRune(rune) ? 2 : 1;
+    }
+    return cells;
+  }
+
+  /// Prefix that fits [maxCells]. Takes one rune when the next character is
+  /// wider than the remaining space, so a column cannot stall.
+  String _takeCells(String text, int maxCells) {
+    if (text.isEmpty) return '';
+    var cells = 0;
+    var units = 0;
+    for (final rune in text.runes) {
+      final width = _isWidePrintRune(rune) ? 2 : 1;
+      if (cells + width > maxCells && units > 0) break;
+      cells += width;
+      units += rune > 0xFFFF ? 2 : 1;
+    }
+    return text.substring(0, units);
+  }
+
+  List<int> _gbkTicketBytes(String text) {
+    final raw = gbk_bytes.encode(_gbkSafe(text));
+    return [for (final b in raw) (b >= 0 && b <= 255) ? b : 0x3F];
+  }
+
+  /// CP437 pound / yen are single bytes that GBK would treat as lead bytes.
+  String _gbkSafe(String text) {
+    final buffer = StringBuffer();
+    for (final rune in text.runes) {
+      if (rune == 156 || rune == 0xA3) {
+        buffer.write('￡');
+      } else if (rune == 157 || rune == 0xA5) {
+        buffer.write('￥');
+      } else if (rune > 0x7F && !_isWidePrintRune(rune)) {
+        buffer.write('?');
+      } else {
+        buffer.writeCharCode(rune);
+      }
+    }
+    return buffer.toString();
+  }
+
+  bool _isWidePrintRune(int rune) {
+    return (rune >= 0x3400 && rune <= 0x9FFF) ||
+        (rune >= 0xF900 && rune <= 0xFAFF) ||
+        (rune >= 0x3000 && rune <= 0x303F) ||
+        (rune >= 0xFF00 && rune <= 0xFFEF);
+  }
 // ************************ (end) Internal command generators ************************
 }
+
+final RegExp _chinesePattern = RegExp(
+  r'[\u3400-\u9FFF\uF900-\uFAFF\u3000-\u303F\uFF00-\uFFEF]',
+);
