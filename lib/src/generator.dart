@@ -720,32 +720,64 @@ class Generator {
 
   /// One ticket row that contains Chinese.
   ///
-  /// Each CJK / fullwidth character takes two cells, so the name wraps before
-  /// the price. Kanji stays on across the columns and through the line feed.
+  /// The name is measured in cells (a Chinese character is two) and printed
+  /// in Kanji. Qty and price stay on the normal path, so a right-aligned
+  /// amount keeps the same position as an English row and its last digit
+  /// stays on the line. Kanji is turned on after those columns, and the line
+  /// feed is sent before Kanji turns off.
   List<int> _chineseRow(List<PosColumn> cols) {
     final current = [
       for (final col in cols)
-        PosColumn(text: col.text, width: col.width, styles: col.styles),
+        PosColumn(
+          text: containsChinese(col.text) ? _gbkSafe(col.text) : col.text,
+          width: col.width,
+          styles: col.styles,
+        ),
     ];
     final bytes = <int>[];
     while (current.any((col) => col.text.isNotEmpty)) {
+      final slices = <_RowSlice>[];
       for (var i = 0; i < current.length; i++) {
         final col = current[i];
         final colInd =
             current.take(i).fold<int>(0, (total, item) => total + item.width);
         final budget = _columnCellBudget(col.styles, colInd, col.width);
-        final fit = _takeCells(col.text, budget);
+        final chinese = containsChinese(col.text);
+        final fit = chinese
+            ? _takeCells(col.text, budget)
+            : (col.text.length <= budget
+                ? col.text
+                : col.text.substring(0, budget));
         current[i] = PosColumn(
           text: col.text.substring(fit.length),
           width: col.width,
           styles: col.styles,
         );
-        bytes.addAll(
-          _chineseColumnBytes(fit, col.styles, colInd, col.width),
-        );
+        slices.add(_RowSlice(fit, col.styles, colInd, col.width, chinese));
+      }
+
+      for (final slice in slices) {
+        if (slice.chinese) continue;
+        bytes.addAll(_text(
+          encode(slice.text),
+          styles: slice.styles,
+          colInd: slice.colInd,
+          colWidth: slice.width,
+        ));
+      }
+      var kanji = false;
+      for (final slice in slices) {
+        if (!slice.chinese || slice.text.isEmpty) continue;
+        bytes.addAll(_chineseColumnBytes(
+          slice.text,
+          slice.styles,
+          slice.colInd,
+          slice.width,
+        ));
+        kanji = true;
       }
       bytes.addAll(emptyLines(1));
-      bytes.addAll(cKanjiOff);
+      if (kanji) bytes.addAll(cKanjiOff);
     }
     return bytes;
   }
@@ -853,3 +885,13 @@ class Generator {
 final RegExp _chinesePattern = RegExp(
   r'[\u3400-\u9FFF\uF900-\uFAFF\u3000-\u303F\uFF00-\uFFEF]',
 );
+
+class _RowSlice {
+  _RowSlice(this.text, this.styles, this.colInd, this.width, this.chinese);
+
+  final String text;
+  final PosStyles styles;
+  final int colInd;
+  final int width;
+  final bool chinese;
+}

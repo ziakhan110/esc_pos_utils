@@ -81,11 +81,47 @@ void main() {
     final firstFeed = bytes.indexOf(0x0A);
     expect(firstFeed, greaterThan(0));
     final firstLine = bytes.sublist(0, firstFeed);
-    expect(_indexOf(bytes, const [0x1C, 0x2E]), greaterThan(firstFeed));
-    expect(_indexOf(firstLine, const [0x1B, 0x74]), -1);
+    final kanjiOn = _indexOf(firstLine, const [0x1C, 0x26]);
+    expect(kanjiOn, greaterThanOrEqualTo(0));
+    expect(_indexOf(firstLine.sublist(kanjiOn), const [0x1B, 0x74]), -1);
+    expect(_indexOf(bytes.sublist(firstFeed), const [0x1C, 0x2E]), greaterThanOrEqualTo(0));
     expect(String.fromCharCodes(firstLine).contains('12.50'), isTrue);
     expect(_count(firstLine, const [0xB9, 0xAC]), 7);
     expect(_count(bytes, const [0xB9, 0xAC]), name.length);
+  });
+
+  test('a Chinese name leaves the price on one line at the English position',
+      () async {
+    final profile = await CapabilityProfile.load();
+    const priceStyle = PosStyles(align: PosAlign.right, bold: true);
+    final price = '${String.fromCharCode(156)}14.00';
+    final chineseCols = [
+      PosColumn(text: '1x', width: 2, styles: const PosStyles(bold: true)),
+      PosColumn(text: '宫保鸡丁', width: 6),
+      PosColumn(text: price, width: 4, styles: priceStyle),
+    ];
+    final englishCols = [
+      PosColumn(text: '1x', width: 2, styles: const PosStyles(bold: true)),
+      PosColumn(text: 'Dish', width: 6),
+      PosColumn(text: price, width: 4, styles: priceStyle),
+    ];
+
+    for (final chars in [32, 48]) {
+      final on = _generator(profile, chineseEnabled: true, charsPerLine: chars);
+      final off = _generator(profile, chineseEnabled: false, charsPerLine: chars);
+      final chinese = on.row(chineseCols.map(_copyColumn).toList());
+      final english = off.row(englishCols.map(_copyColumn).toList());
+      final feed = chinese.indexOf(0x0A);
+      final firstLine = chinese.sublist(0, feed);
+      final priceBytes = [156, 0x31, 0x34, 0x2E, 0x30, 0x30];
+
+      expect(_indexOf(firstLine, priceBytes), greaterThanOrEqualTo(0),
+          reason: '$chars chars');
+      expect(chinese.sublist(feed + 1).take(1), isNot([0x30]),
+          reason: '$chars chars');
+      expect(_pricePosition(chinese, priceBytes), _pricePosition(english, priceBytes),
+          reason: '$chars chars');
+    }
   });
 
   test('a pound sign inside Chinese text is not a raw GBK lead', () async {
@@ -166,4 +202,18 @@ int _count(List<int> bytes, List<int> pattern) {
     if (_indexOf(bytes.sublist(i), pattern) == 0) count++;
   }
   return count;
+}
+
+PosColumn _copyColumn(PosColumn col) {
+  return PosColumn(text: col.text, width: col.width, styles: col.styles);
+}
+
+List<int> _pricePosition(List<int> bytes, List<int> price) {
+  final at = _indexOf(bytes, price);
+  for (var i = at; i >= 2; i--) {
+    if (bytes[i - 2] == 0x1B && bytes[i - 1] == 0x24) {
+      return [bytes[i], bytes[i + 1]];
+    }
+  }
+  return const [];
 }
